@@ -1,6 +1,10 @@
 __pycache__/
 *.pyc
 .venv/
+.pylibs/
+.pip-tmp/
+.wheels/
+.fetch_deps.py
 config.py
 database.db
 static/originals/*

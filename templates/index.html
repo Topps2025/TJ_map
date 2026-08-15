@@ -10,8 +10,11 @@
 
 <header class="site-header">
   <div class="header-inner">
-    <h1 class="logo">猫和老鼠<span>点位查询</span></h1>
-    <p class="subtitle">挂机 · 几何桶 · 点投 · 种树 · 隔墙炸</p>
+    <div class="header-left">
+      <h1 class="logo">猫和老鼠<span>点位查询</span></h1>
+      <p class="subtitle">挂机果盘 · 炸药桶 · 点投 · 种树</p>
+    </div>
+    <a class="header-link" href="/admin">后台</a>
   </div>
 </header>
 
@@ -38,6 +41,10 @@
   <!-- 点位网格 -->
   <section class="layer" id="pointsArea" hidden>
     <div class="layer-label" id="pointsTitle">点位展示</div>
+    <div class="map-banner" id="mapBanner" hidden>
+      <img src="" alt="" class="map-banner-img">
+      <span class="map-banner-name"></span>
+    </div>
     <div class="grid" id="pointsGrid"></div>
   </section>
 

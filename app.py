@@ -36,22 +36,46 @@ app.config["MAX_CONTENT_LENGTH"] = config.MAX_UPLOAD_SIZE
 
 # ---------------------------------------------------------------------------
 # 三级联动 基础数据（第一层分类 -> 第二层地图主题 -> 第三层具体地图）
+# 地图清单与命名以 tjwiki 仓库（Tom-and-jerry-chase-wiki/src/data/maps.ts）为准
 # ---------------------------------------------------------------------------
 
 L1_CATEGORIES = [
     "挂机果盘点位",
-    "几何桶点位",
+    "炸药桶点位",
     "投掷物点投点位",
     "罗宾汉泰菲种树点位",
-    "莱恩隔墙炸点位",
 ]
 
+# 分类改名迁移：旧分类 -> 新分类（几何桶/隔墙炸 合并为 炸药桶）
+L1_CATEGORY_MIGRATE = {
+    "几何桶点位": "炸药桶点位",
+    "莱恩隔墙炸点位": "炸药桶点位",
+}
+
+# 常规地图（按主题族分组）
 L2_GROUPS = {
-    "经典之家": ["经典之家1", "经典之家2", "经典之家3"],
-    "雪夜古堡": ["雪夜古堡1", "雪夜古堡2", "雪夜古堡3"],
-    "夏日游轮": ["夏日游轮1", "夏日游轮2"],
-    "太空堡垒": ["太空堡垒1", "太空堡垒2"],
-    "森林牧场": ["森林牧场1", "森林牧场2", "森林牧场3"],
+    "经典之家": ["经典之家I", "经典之家II", "经典之家III"],
+    "雪夜古堡": ["雪夜古堡I", "雪夜古堡II", "雪夜古堡III"],
+    "夏日游轮": ["夏日游轮I", "夏日游轮II", "夏日游轮III"],
+    "太空堡垒": ["太空堡垒I", "太空堡垒II", "太空堡垒III"],
+    "游乐场": ["游乐场"],
+    "森林牧场": ["森林牧场"],
+    "大都会": ["大都会"],
+    "熊猫馆": ["熊猫馆"],
+    "御门酒店": ["御门酒店"],
+    "天宫": ["天宫", "天宫-云上"],
+    # 娱乐地图
+    "娱乐地图": [
+        "经典之家-疯狂奶酪赛",
+        "雪夜古堡-疯狂奶酪赛",
+        "金丝雀之家",
+        "熊猫馆-烟花大作战",
+        "阳光沙滩",
+        "后院",
+        "5V5大都会",
+        "家之典经",
+        "经典之家-谁是外星人",
+    ],
 }
 
 
@@ -67,6 +91,60 @@ def get_maps_for_l1_l2(l1, l2):
     if l1 not in L1_CATEGORIES or l2 not in L2_GROUPS:
         return []
     return L2_GROUPS[l2]
+
+
+# ---------------------------------------------------------------------------
+# 地图静态图片（来自 tjwiki 仓库 public/images/maps/）
+# thumb = 主题缩略图；full = 整图（仅常规地图有，娱乐地图为空）
+# ---------------------------------------------------------------------------
+
+# 主题族缩略图（I/II/III 变体共用主题图）
+_THEME_THUMBS = {
+    "经典之家": "经典之家.png",
+    "雪夜古堡": "雪夜古堡.png",
+    "夏日游轮": "夏日游轮.png",
+    "太空堡垒": "太空堡垒.png",
+    "游乐场": "游乐场.png",
+    "森林牧场": "森林牧场.png",
+    "大都会": "大都会.png",
+    "熊猫馆": "熊猫馆.png",
+    "御门酒店": "御门酒店.png",
+    "天宫": "天宫.png",
+}
+
+# 娱乐地图缩略图（沿用 tjwiki specialImageUrl 规则）
+_FUN_THUMBS = {
+    "经典之家-疯狂奶酪赛": "经典之家-疯狂奶酪赛.png",
+    "雪夜古堡-疯狂奶酪赛": "雪夜古堡.png",
+    "金丝雀之家": "金丝雀之家.png",
+    "熊猫馆-烟花大作战": "熊猫馆.png",
+    "阳光沙滩": "阳光沙滩.png",
+    "后院": "经典之家.png",
+    "5V5大都会": "大都会.png",
+    "家之典经": "经典之家.png",
+    "经典之家-谁是外星人": "经典之家.png",
+}
+
+# 天宫-云上 有独立主题图
+_THEME_THUMBS["天宫-云上"] = "天宫-云上.png"
+
+
+def get_map_images(map_name):
+    """返回 {thumb, full} 静态图片路径（/static/images/maps/ 下）。"""
+    # 缩略图：娱乐地图用专属图；常规地图变体（I/II/III）继承主题族缩略图
+    thumb = _FUN_THUMBS.get(map_name)
+    if thumb is None:
+        thumb = _THEME_THUMBS.get(map_name)
+    if thumb is None:
+        for group, maps in L2_GROUPS.items():
+            if map_name in maps:
+                thumb = _THEME_THUMBS.get(group)
+                break
+    full = "" if map_name in _FUN_THUMBS else f"{map_name}-地图.png"
+    return {
+        "thumb": f"/static/images/maps/{thumb}" if thumb else "",
+        "full": f"/static/images/maps/{full}" if full else "",
+    }
 
 
 # ---------------------------------------------------------------------------
@@ -99,6 +177,9 @@ def get_db():
 def init_db():
     conn = get_db()
     conn.executescript(DB_SCHEMA)
+    # 旧分类名迁移（几何桶/隔墙炸 -> 炸药桶）
+    for old, new in L1_CATEGORY_MIGRATE.items():
+        conn.execute("UPDATE points SET category_l1 = ? WHERE category_l1 = ?", (new, old))
     conn.commit()
     conn.close()
 
@@ -225,14 +306,22 @@ def api_categories():
 @app.route("/api/groups")
 def api_groups():
     l1 = request.args.get("l1", "")
-    return jsonify({"ok": True, "data": get_groups_for_l1(l1)})
+    groups = get_groups_for_l1(l1)
+    # 附带主题缩略图（取该主题第一张地图的 thumb）
+    data = []
+    for g in groups:
+        first_map = L2_GROUPS[g][0]
+        data.append({"name": g, "thumb": get_map_images(first_map)["thumb"]})
+    return jsonify({"ok": True, "data": data})
 
 
 @app.route("/api/maps")
 def api_maps():
     l1 = request.args.get("l1", "")
     l2 = request.args.get("l2", "")
-    return jsonify({"ok": True, "data": get_maps_for_l1_l2(l1, l2)})
+    maps = get_maps_for_l1_l2(l1, l2)
+    data = [{"name": m, **get_map_images(m)} for m in maps]
+    return jsonify({"ok": True, "data": data})
 
 
 @app.route("/api/points")

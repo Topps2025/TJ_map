@@ -9,7 +9,7 @@
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
 
-  const state = { l1: '', l2: '', l3: '' };
+  const state = { l1: '', l2: '', l3: '', mapsInfo: [] };
 
   const layer2 = $('#layer2');
   const layer3 = $('#layer3');
@@ -69,10 +69,15 @@
     groupChips.innerHTML = '<div class="loading-text">加载主题中...</div>';
     try {
       const groups = await getJSON('/api/groups?l1=' + encodeURIComponent(cat));
-      groupChips.innerHTML = groups.map(g =>
-        `<button class="chip" data-group="${esc(g)}">${esc(g)}</button>`).join('');
-      $$('#groupChips .chip').forEach(btn =>
-        btn.addEventListener('click', () => selectGroup(btn.dataset.group)));
+      groupChips.innerHTML = groups.map(g => `
+        <button class="map-card" data-name="${esc(g.name)}">
+          <span class="map-card-thumb">
+            ${g.thumb ? `<img src="${esc(g.thumb)}" alt="${esc(g.name)}" loading="lazy">` : '<span class="map-card-placeholder"></span>'}
+          </span>
+          <span class="map-card-name">${esc(g.name)}</span>
+        </button>`).join('');
+      $$('#groupChips .map-card').forEach(btn =>
+        btn.addEventListener('click', () => selectGroup(btn.dataset.name)));
     } catch (e) {
       groupChips.innerHTML = '<div class="empty">主题加载失败</div>';
     }
@@ -83,17 +88,23 @@
   async function selectGroup(group) {
     state.l2 = group;
     state.l3 = '';
-    $$('#groupChips .chip').forEach(b => b.classList.toggle('active', b.dataset.group === group));
+    $$('#groupChips .map-card').forEach(b => b.classList.toggle('active', b.dataset.name === group));
     pointsArea.hidden = true;
     layer3.hidden = false;
     mapChips.innerHTML = '<div class="loading-text">加载地图中...</div>';
     try {
       const maps = await getJSON('/api/maps?l1=' + encodeURIComponent(state.l1) +
         '&l2=' + encodeURIComponent(group));
-      mapChips.innerHTML = maps.map(m =>
-        `<button class="chip" data-map="${esc(m)}">${esc(m)}</button>`).join('');
-      $$('#mapChips .chip').forEach(btn =>
-        btn.addEventListener('click', () => selectMap(btn.dataset.map)));
+      mapChips.innerHTML = maps.map(m => `
+        <button class="map-card" data-name="${esc(m.name)}">
+          <span class="map-card-thumb">
+            ${m.thumb ? `<img src="${esc(m.thumb)}" alt="${esc(m.name)}" loading="lazy">` : '<span class="map-card-placeholder"></span>'}
+          </span>
+          <span class="map-card-name">${esc(m.name)}</span>
+        </button>`).join('');
+      state.mapsInfo = maps;
+      $$('#mapChips .map-card').forEach(btn =>
+        btn.addEventListener('click', () => selectMap(btn.dataset.name)));
     } catch (e) {
       mapChips.innerHTML = '<div class="empty">地图加载失败</div>';
     }
@@ -103,9 +114,21 @@
 
   async function selectMap(map) {
     state.l3 = map;
-    $$('#mapChips .chip').forEach(b => b.classList.toggle('active', b.dataset.map === map));
+    $$('#mapChips .map-card').forEach(b => b.classList.toggle('active', b.dataset.name === map));
+    const info = (state.mapsInfo || []).find(m => m.name === map) || {};
     pointsArea.hidden = false;
     pointsTitle.textContent = `${state.l1} · ${state.l2} · ${map}`;
+    // 地图整图横幅（娱乐地图无整图则不显示）
+    const banner = $('#mapBanner');
+    if (info.full) {
+      banner.hidden = false;
+      const img = banner.querySelector('img');
+      img.src = info.full;
+      img.alt = map;
+      banner.querySelector('.map-banner-name').textContent = map;
+    } else {
+      banner.hidden = true;
+    }
     renderSkeleton();
     try {
       const points = await getJSON('/api/points?status=approved' +
@@ -199,7 +222,7 @@
     try {
       const groups = await getJSON('/api/groups?l1=' + encodeURIComponent(fCat.value));
       fGroup.innerHTML = '<option value="">请选择</option>' +
-        groups.map(g => `<option value="${esc(g)}">${esc(g)}</option>`).join('');
+        groups.map(g => `<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('');
     } catch (e) { toast('主题加载失败'); }
   });
 
@@ -211,7 +234,7 @@
       const maps = await getJSON('/api/maps?l1=' + encodeURIComponent(fCat.value) +
         '&l2=' + encodeURIComponent(fGroup.value));
       fMap.innerHTML = '<option value="">请选择</option>' +
-        maps.map(m => `<option value="${esc(m)}">${esc(m)}</option>`).join('');
+        maps.map(m => `<option value="${esc(m.name)}">${esc(m.name)}</option>`).join('');
     } catch (e) { toast('地图加载失败'); }
   });
 

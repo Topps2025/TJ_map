@@ -201,7 +201,7 @@ $('#bCat').addEventListener('change', async () => {
   try {
     const groups = await getJSON('/api/groups?l1=' + encodeURIComponent($('#bCat').value));
     g.innerHTML = '<option value="">请选择</option>' +
-      groups.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+      groups.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');
   } catch (e) { g.innerHTML = '<option value="">加载失败</option>'; }
 });
 
@@ -214,7 +214,7 @@ $('#bGroup').addEventListener('change', async () => {
     const maps = await getJSON('/api/maps?l1=' + encodeURIComponent($('#bCat').value) +
       '&l2=' + encodeURIComponent($('#bGroup').value));
     m.innerHTML = '<option value="">请选择</option>' +
-      maps.map(x => `<option value="${esc(x)}">${esc(x)}</option>`).join('');
+      maps.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');
   } catch (e) { m.innerHTML = '<option value="">加载失败</option>'; }
 });
 
