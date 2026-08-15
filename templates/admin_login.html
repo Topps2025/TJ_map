@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>后台登录 · 猫和老鼠点位</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="admin-body">
+
+<main class="login-wrap">
+  <form class="login-card glass" id="loginForm">
+    <h1 class="login-logo">审核后台</h1>
+    <div class="form-group">
+      <label>账号</label>
+      <input type="text" name="username" id="user" autocomplete="username" required>
+    </div>
+    <div class="form-group">
+      <label>密码</label>
+      <input type="password" name="password" id="pass" autocomplete="current-password" required>
+    </div>
+    <div class="form-msg" id="loginMsg" hidden></div>
+    <button type="submit" class="btn-primary">登 录</button>
+  </form>
+</main>
+
+<script>
+document.getElementById('loginForm').addEventListener('submit', async function (e) {
+  e.preventDefault();
+  const msg = document.getElementById('loginMsg');
+  msg.hidden = true;
+  try {
+    const fd = new FormData(this);
+    const res = await fetch('/admin/login', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      location.href = '/admin/dashboard';
+    } else {
+      msg.textContent = data.error || '登录失败';
+      msg.hidden = false;
+    }
+  } catch (err) {
+    msg.textContent = '网络错误，请重试';
+    msg.hidden = false;
+  }
+});
+</script>
+</body>
+</html>

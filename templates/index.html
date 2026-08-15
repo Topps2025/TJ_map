@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <title>猫和老鼠手游 · 点位查询</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body>
+
+<header class="site-header">
+  <div class="header-inner">
+    <h1 class="logo">猫和老鼠<span>点位查询</span></h1>
+    <p class="subtitle">挂机 · 几何桶 · 点投 · 种树 · 隔墙炸</p>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- 第一层：分类 Tab -->
+  <section class="layer" id="layer1">
+    <div class="layer-label">1 · 选择分类</div>
+    <div class="cat-tabs" id="catTabs"><!-- JS 渲染 --></div>
+  </section>
+
+  <!-- 第二层：地图主题 -->
+  <section class="layer" id="layer2" hidden>
+    <div class="layer-label">2 · 选择地图主题</div>
+    <div class="chip-row" id="groupChips"><!-- JS 渲染 --></div>
+  </section>
+
+  <!-- 第三层：具体地图 -->
+  <section class="layer" id="layer3" hidden>
+    <div class="layer-label">3 · 选择具体地图</div>
+    <div class="chip-row" id="mapChips"><!-- JS 渲染 --></div>
+  </section>
+
+  <!-- 点位网格 -->
+  <section class="layer" id="pointsArea" hidden>
+    <div class="layer-label" id="pointsTitle">点位展示</div>
+    <div class="grid" id="pointsGrid"></div>
+  </section>
+
+</main>
+
+<div class="fab-wrap">
+  <button class="fab" id="openSubmit">＋<span>投稿</span></button>
+</div>
+
+<!-- 投稿弹窗 -->
+<div class="modal-mask" id="submitModal" hidden>
+  <div class="modal glass">
+    <button class="modal-close" id="closeSubmit" aria-label="关闭">✕</button>
+    <h2 class="modal-title">投稿新点位</h2>
+    <form id="submitForm" enctype="multipart/form-data" novalidate>
+      <div class="form-group">
+        <label>分类</label>
+        <select name="category_l1" id="fCat" required><option value="">请选择</option></select>
+      </div>
+      <div class="form-group">
+        <label>地图主题</label>
+        <select name="map_group_l2" id="fGroup" required disabled><option value="">先选分类</option></select>
+      </div>
+      <div class="form-group">
+        <label>具体地图</label>
+        <select name="map_name_l3" id="fMap" required disabled><option value="">先选主题</option></select>
+      </div>
+      <div class="form-group">
+        <label>点位描述</label>
+        <input type="text" name="title" id="fTitle" maxlength="60" placeholder="例：二楼右侧墙角，木桶堆旁" required>
+      </div>
+      <div class="form-group">
+        <label>点位图片（PNG）</label>
+        <div class="file-drop" id="fileDrop">
+          <input type="file" name="image" id="fImage" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp" required>
+          <div class="file-hint" id="fileHint">点击或拖拽图片到这里</div>
+          <img class="file-preview" id="filePreview" alt="预览" hidden>
+        </div>
+      </div>
+      <div class="form-group">
+        <label>投稿人邮箱（选填）</label>
+        <input type="email" name="submitter_email" id="fEmail" placeholder="用于审核结果通知">
+      </div>
+      <div class="form-msg" id="formMsg" hidden></div>
+      <button type="submit" class="btn-primary" id="submitBtn">提交投稿</button>
+    </form>
+  </div>
+</div>
+
+<!-- 原图查看弹窗 -->
+<div class="modal-mask" id="lightbox" hidden>
+  <div class="lightbox glass">
+    <button class="modal-close" id="closeLightbox" aria-label="关闭">✕</button>
+    <img id="lbImg" src="" alt="点位原图">
+    <p id="lbTitle" class="lightbox-title"></p>
+  </div>
+</div>
+
+<!-- 轻提示 -->
+<div class="toast" id="toast" hidden></div>
+
+<script src="/static/js/main.js"></script>
+</body>
+</html>

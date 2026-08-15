@@ -1,0 +1,10 @@
+__pycache__/
+*.pyc
+.venv/
+config.py
+database.db
+static/originals/*
+static/thumbs/*
+!static/originals/.gitkeep
+!static/thumbs/.gitkeep
+AGENTS.md
