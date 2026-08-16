@@ -63,3 +63,45 @@
   - `static/css/style.css`、`static/js/main.js`、`templates/index.html`、`templates/admin_dashboard.html`
   - `static/images/maps/`（33 张图片，新增）
   - `.gitignore`
+
+---
+
+## 2026-08-16（第二轮 · 后台管理与点位展示优化）
+
+### 一、后台新增硬删除功能（app.py + admin_dashboard.html）
+
+- 新增 `POST /admin/delete/<id>`（`@admin_required` 保护）：删除数据库记录并物理删除关联图片文件，不发邮件（区别于"拒绝"流程）
+- 后台卡片（待审核 / 已审核标签）均新增「删除」按钮，带 confirm 确认
+- 顺手修复 `admin_reject` 未鉴权的历史漏洞（补上 `@admin_required`）
+
+### 二、清理 untitle 演示投稿（数据操作）
+
+- 删除全部 `title = 'untitle'` 的投稿（12 条，id 1–12，均为 seed_demo.py 生成的演示数据）
+- 同步清理其关联的 `demo_*.webp` 图片文件（originals + thumbs）
+- 库中保留 3 条真实投稿（右卧室墙缝 / 客舱上甲板 / 庭院上卧室）
+
+### 三、移除后台批量上传功能
+
+- 删除 `POST /admin/bulk_upload` 接口、后台「批量上传」标签页、表单及全部相关 JS
+- 保留「全部通过」（`/admin/approve_all`）
+- 验证：`/admin/bulk_upload` 返回 404，后台页面无 bulk 残留引用
+
+### 四、点位卡片展示修复（style.css）
+
+- 点位卡片原为固定 1:1 正方形 + `object-fit: cover`，非正方形 PNG 会被裁切
+- 改为随图片自然宽高比自适应：`.thumb-wrap img { width:100%; height:auto; object-fit:contain }`，网格加 `align-items: start`，整图完整显示不裁切
+
+### 五、其他
+
+- 验证：服务器重启后 `/` 200；删除接口未登录 302 跳登录、不存在 id 返回 404；`/admin/approve_all` 正常
+- 本地 `database.db` 为运行时数据，删除操作不产生 git 变更
+
+### 本次提交
+
+- 提交信息：`feat: 后台支持删除点位并移除批量上传，点位卡片自适应图片比例`
+- 涉及文件：
+  - `app.py`（删除接口、reject 鉴权、移除 bulk_upload）
+  - `templates/admin_dashboard.html`（删除按钮、移除批量上传 UI/JS）
+  - `static/css/style.css`（点位卡片自然宽高比）
+  - `DEVELOPMENT_LOG.md`（本日志）
+  - 上一轮遗留已暂存：前端重做、分类图标、主题切换等（一并提交）

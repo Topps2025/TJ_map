@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex">
   <title>审核后台 · 猫和老鼠点位</title>
+  <script src="/static/js/theme.js"></script>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body class="admin-body">
@@ -12,15 +13,32 @@
 <header class="site-header">
   <div class="header-inner">
     <h1 class="logo">点位审核后台</h1>
-    <button class="btn-ghost" id="logoutBtn">退出登录</button>
+    <nav class="header-nav">
+      <button class="nav-icon-btn" id="darkToggle" aria-label="切换深色模式">
+        <svg class="icon-sun" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <svg class="icon-moon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/>
+        </svg>
+      </button>
+      <button class="btn-ghost" id="logoutBtn">退出登录</button>
+    </nav>
   </div>
 </header>
 
 <main class="container">
+  <header class="page-header">
+    <h1 class="page-title">审核后台</h1>
+    <p class="page-sub">审核玩家投稿</p>
+  </header>
+
   <nav class="admin-tabs">
     <button class="chip active" data-status="pending">待审核</button>
     <button class="chip" data-status="approved">已审核</button>
-    <button class="chip" data-status="bulk">批量上传</button>
   </nav>
 
   <!-- 列表视图 -->
@@ -33,35 +51,6 @@
       <div class="loading-text">加载中...</div>
     </div>
   </section>
-
-  <!-- 批量上传 -->
-  <section id="bulkPanel" hidden>
-    <div class="layer-label">批量上传点位</div>
-    <form id="bulkForm" enctype="multipart/form-data" novalidate>
-      <div class="form-group">
-        <label>分类</label>
-        <select id="bCat" required><option value="">请选择</option></select>
-      </div>
-      <div class="form-group">
-        <label>地图主题</label>
-        <select id="bGroup" required disabled><option value="">先选分类</option></select>
-      </div>
-      <div class="form-group">
-        <label>具体地图</label>
-        <select id="bMap" required disabled><option value="">先选主题</option></select>
-      </div>
-      <div class="form-group">
-        <label>图片（可多选，每张单独填标题，上传后直接发布）</label>
-        <div class="file-drop" id="bDrop">
-          <input type="file" id="bFiles" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp" multiple required>
-          <div class="file-hint" id="bHint">点击或拖拽多张图片到这里</div>
-        </div>
-        <div class="file-list" id="bFileList"></div>
-      </div>
-      <div class="form-msg" id="bMsg" hidden></div>
-      <button type="submit" class="btn-primary" id="bSubmitBtn">上传并直接发布</button>
-    </form>
-  </section>
 </main>
 
 <div class="modal-mask" id="lightbox" hidden>
@@ -71,16 +60,57 @@
   </div>
 </div>
 
+<!-- 编辑点位弹窗 -->
+<div class="modal-mask" id="editModal" hidden>
+  <div class="modal glass">
+    <button class="modal-close" id="closeEdit" aria-label="关闭">✕</button>
+    <h2 class="modal-title">编辑点位</h2>
+    <form id="editForm" novalidate>
+      <div class="form-group">
+        <label>分类</label>
+        <select name="category_l1" id="eCat" required><option value="">请选择</option></select>
+      </div>
+      <div class="form-group">
+        <label>地图主题</label>
+        <select name="map_group_l2" id="eGroup" required disabled><option value="">先选分类</option></select>
+      </div>
+      <div class="form-group">
+        <label>具体地图</label>
+        <select name="map_name_l3" id="eMap" required disabled><option value="">先选主题</option></select>
+      </div>
+      <div class="form-group">
+        <label>标题</label>
+        <input type="text" name="title" id="eTitle" maxlength="60" required>
+      </div>
+      <div class="form-group">
+        <label>点位描述（选填）</label>
+        <textarea name="description" id="eDesc" rows="3" maxlength="300" placeholder="补充说明该点位（可选）"></textarea>
+      </div>
+      <div class="form-group">
+        <label>投稿人</label>
+        <input type="text" name="submitter" id="eSubmitter" maxlength="30" required>
+      </div>
+      <div class="form-group">
+        <label>投稿人邮箱</label>
+        <input type="email" name="submitter_email" id="eEmail" required>
+      </div>
+      <div class="form-msg" id="eMsg" hidden></div>
+      <button type="submit" class="btn-primary" id="eSaveBtn">保存</button>
+    </form>
+  </div>
+</div>
+
 <script>
 let currentStatus = 'pending';
-let pickedFiles = [];
+let editId = null;
+let editingRow = null;
+let currentRows = [];
 
 const $ = (s) => document.querySelector(s);
 const listEl = $('#adminList');
 const labelEl = $('#listLabel');
 const approveAllBtn = $('#approveAllBtn');
 const listPanel = $('#listPanel');
-const bulkPanel = $('#bulkPanel');
 
 function esc(s) {
   const d = document.createElement('div');
@@ -107,14 +137,6 @@ async function loadList(status) {
   document.querySelectorAll('.admin-tabs .chip').forEach(b =>
     b.classList.toggle('active', b.dataset.status === status));
 
-  if (status === 'bulk') {
-    listPanel.hidden = true;
-    bulkPanel.hidden = false;
-    approveAllBtn.hidden = true;
-    if (!$('#bCat').options.length) await initBulkSelects();
-    return;
-  }
-  bulkPanel.hidden = true;
   listPanel.hidden = false;
   approveAllBtn.hidden = status !== 'pending';
 
@@ -127,26 +149,38 @@ async function loadList(status) {
   if (!data.ok) { listEl.innerHTML = '<div class="loading-text">加载失败</div>'; return; }
 
   const rows = data.data;
+  currentRows = rows;
   if (!rows.length) {
     listEl.innerHTML = '<div class="empty">暂无记录</div>';
     return;
   }
-  listEl.innerHTML = rows.map(r => `
-    <div class="admin-card glass" data-id="${r.id}">
-      <img class="admin-thumb" src="${esc(r.thumb_url)}" alt="缩略图" loading="lazy"
-           onclick="openLb('${esc(r.original_url)}')">
+  listEl.innerHTML = rows.map((r, i) => {
+    const imgCount = r.images && r.images.length ? r.images.length : 1;
+    return `
+    <div class="admin-card glass animate-fadeInUp grid-item-${(i % 8) + 1}" data-id="${r.id}">
+      <div class="admin-thumb-wrap">
+        <img class="admin-thumb" src="${esc(r.thumb_url)}" alt="缩略图" loading="lazy"
+             onclick="openLb('${esc(r.original_url)}')">
+        ${imgCount > 1 ? `<span class="multi-badge">×${imgCount}</span>` : ''}
+      </div>
       <div class="admin-info">
         <div class="admin-title">${esc(r.title)}</div>
         <div class="admin-meta">${esc(r.category_l1)} · ${esc(r.map_group_l2)} · ${esc(r.map_name_l3)}</div>
+        ${r.tags ? `<div class="admin-meta">标签：${esc(r.tags)}</div>` : ''}
+        ${r.description ? `<div class="admin-meta">描述：${esc(r.description)}</div>` : ''}
+        ${r.submitter ? `<div class="admin-meta">投稿人：${esc(r.submitter)}</div>` : ''}
         <div class="admin-meta">投稿时间：${esc(r.created_at)}</div>
         ${r.submitter_email ? `<div class="admin-meta">邮箱：${esc(r.submitter_email)}</div>` : ''}
       </div>
-      ${status === 'pending' ? `
       <div class="admin-actions">
+        <button class="btn-ghost" onclick="openEdit(${r.id})">编辑</button>
+        ${status === 'pending' ? `
         <button class="btn-ok" onclick="act(${r.id},'approve')">通过</button>
-        <button class="btn-no" onclick="act(${r.id},'reject')">拒绝</button>
-      </div>` : ''}
-    </div>`).join('');
+        <button class="btn-no" onclick="act(${r.id},'reject')">拒绝</button>` : ''}
+        <button class="btn-no" onclick="del(${r.id})">删除</button>
+      </div>
+    </div>`;
+  }).join('');
 }
 
 async function act(id, action) {
@@ -155,6 +189,138 @@ async function act(id, action) {
   if (!data.ok) { alert(data.error || '操作失败'); return; }
   loadList(currentStatus);
 }
+
+async function del(id) {
+  if (!confirm('确定删除该点位？删除后不可恢复。')) return;
+  const res = await fetch('/admin/delete/' + id, { method: 'POST' });
+  const data = await res.json();
+  if (!data.ok) { alert(data.error || '删除失败'); return; }
+  loadList(currentStatus);
+}
+
+/* ---------------- 编辑点位 ---------------- */
+
+function openEdit(id) {
+  editingRow = currentRows.find(x => x.id === id);
+  if (!editingRow) return;
+  editId = id;
+  $('#eTitle').value = editingRow.title || '';
+  $('#eDesc').value = editingRow.description || '';
+  $('#eSubmitter').value = editingRow.submitter || '';
+  $('#eEmail').value = editingRow.submitter_email || '';
+  $('#eMsg').hidden = true;
+  $('#eMsg').className = 'form-msg';
+  $('#editModal').hidden = false;
+  initEditSelects();
+}
+
+async function initEditSelects() {
+  try {
+    const cats = await getJSON('/api/categories');
+    const eCat = $('#eCat');
+    eCat.innerHTML = '<option value="">请选择</option>' +
+      cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+    eCat.value = editingRow.category_l1;
+    fillEditGroups();
+  } catch (e) {
+    showMsg($('#eMsg'), '加载分类失败', 'error');
+  }
+}
+
+async function fillEditGroups() {
+  const g = $('#eGroup');
+  const m = $('#eMap');
+  if (!$('#eCat').value) { g.disabled = true; m.disabled = true; return; }
+  g.disabled = false;
+  m.disabled = true;
+  m.innerHTML = '<option value="">先选主题</option>';
+  g.innerHTML = '<option value="">加载中...</option>';
+  try {
+    const groups = await getJSON('/api/groups?l1=' + encodeURIComponent($('#eCat').value));
+    g.innerHTML = '<option value="">请选择</option>' +
+      groups.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');
+    g.value = editingRow.map_group_l2;
+    fillEditMaps();
+  } catch (e) { g.innerHTML = '<option value="">加载失败</option>'; }
+}
+
+async function fillEditMaps() {
+  const m = $('#eMap');
+  if (!$('#eGroup').value) { m.disabled = true; m.innerHTML = '<option value="">先选主题</option>'; return; }
+  m.disabled = false;
+  m.innerHTML = '<option value="">加载中...</option>';
+  try {
+    const maps = await getJSON('/api/maps?l1=' + encodeURIComponent($('#eCat').value) +
+      '&l2=' + encodeURIComponent($('#eGroup').value));
+    m.innerHTML = '<option value="">请选择</option>' +
+      maps.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');
+    m.value = editingRow.map_name_l3;
+  } catch (e) { m.innerHTML = '<option value="">加载失败</option>'; }
+}
+
+$('#eCat').addEventListener('change', () => {
+  $('#eGroup').disabled = true;
+  $('#eMap').disabled = true;
+  $('#eMap').innerHTML = '<option value="">先选主题</option>';
+  fillEditGroups();
+});
+$('#eGroup').addEventListener('change', () => fillEditMaps());
+
+$('#closeEdit').addEventListener('click', () => { $('#editModal').hidden = true; });
+$('#editModal').addEventListener('click', (e) => {
+  if (e.target === $('#editModal')) $('#editModal').hidden = true;
+});
+
+$('#editForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = $('#eMsg');
+  msg.hidden = true;
+
+  if (!$('#eCat').value || !$('#eGroup').value || !$('#eMap').value) {
+    showMsg(msg, '请完整选择分类、主题和地图', 'error');
+    return;
+  }
+  if (!$('#eTitle').value.trim()) {
+    showMsg(msg, '请填写标题', 'error');
+    return;
+  }
+  if (!$('#eSubmitter').value.trim()) {
+    showMsg(msg, '请填写投稿人', 'error');
+    return;
+  }
+  if (!$('#eEmail').value.trim()) {
+    showMsg(msg, '请填写投稿人邮箱', 'error');
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('category_l1', $('#eCat').value);
+  fd.append('map_group_l2', $('#eGroup').value);
+  fd.append('map_name_l3', $('#eMap').value);
+  fd.append('title', $('#eTitle').value.trim());
+  fd.append('description', $('#eDesc').value.trim());
+  fd.append('submitter', $('#eSubmitter').value.trim());
+  fd.append('submitter_email', $('#eEmail').value.trim());
+
+  const btn = $('#eSaveBtn');
+  btn.disabled = true;
+  btn.textContent = '保存中...';
+  try {
+    const res = await fetch('/admin/edit/' + editId, { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      $('#editModal').hidden = true;
+      loadList(currentStatus);
+    } else {
+      showMsg(msg, data.error || '保存失败', 'error');
+    }
+  } catch (err) {
+    showMsg(msg, '网络错误，请重试', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '保存';
+  }
+});
 
 $('#logoutBtn').addEventListener('click', async () => {
   await fetch('/admin/logout', { method: 'POST' });
@@ -178,139 +344,6 @@ function openLb(src) {
 }
 $('#closeLightbox').addEventListener('click', () => { $('#lightbox').hidden = true; });
 $('#lightbox').addEventListener('click', (e) => { if (e.target === $('#lightbox')) $('#lightbox').hidden = true; });
-
-/* ---------------- 批量上传 ---------------- */
-
-async function initBulkSelects() {
-  try {
-    const cats = await getJSON('/api/categories');
-    $('#bCat').innerHTML = '<option value="">请选择</option>' +
-      cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
-  } catch (e) {
-    $('#bCat').innerHTML = '<option value="">加载失败</option>';
-  }
-}
-
-$('#bCat').addEventListener('change', async () => {
-  const g = $('#bGroup');
-  g.disabled = !$('#bCat').value;
-  $('#bMap').disabled = true;
-  $('#bMap').innerHTML = '<option value="">先选主题</option>';
-  if (!$('#bCat').value) { g.innerHTML = '<option value="">先选分类</option>'; return; }
-  g.innerHTML = '<option value="">加载中...</option>';
-  try {
-    const groups = await getJSON('/api/groups?l1=' + encodeURIComponent($('#bCat').value));
-    g.innerHTML = '<option value="">请选择</option>' +
-      groups.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');
-  } catch (e) { g.innerHTML = '<option value="">加载失败</option>'; }
-});
-
-$('#bGroup').addEventListener('change', async () => {
-  const m = $('#bMap');
-  m.disabled = !$('#bGroup').value;
-  if (!$('#bGroup').value) { m.innerHTML = '<option value="">先选主题</option>'; return; }
-  m.innerHTML = '<option value="">加载中...</option>';
-  try {
-    const maps = await getJSON('/api/maps?l1=' + encodeURIComponent($('#bCat').value) +
-      '&l2=' + encodeURIComponent($('#bGroup').value));
-    m.innerHTML = '<option value="">请选择</option>' +
-      maps.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');
-  } catch (e) { m.innerHTML = '<option value="">加载失败</option>'; }
-});
-
-const bFiles = $('#bFiles');
-const bDrop = $('#bDrop');
-const bFileList = $('#bFileList');
-
-bFiles.addEventListener('change', () => {
-  pickedFiles = Array.from(bFiles.files);
-  renderFileList();
-});
-
-['dragover', 'drop'].forEach(evt => bDrop.addEventListener(evt, (e) => {
-  e.preventDefault();
-  bDrop.classList.toggle('dragover', evt === 'dragover');
-}));
-bDrop.addEventListener('drop', (e) => {
-  const files = e.dataTransfer.files && Array.from(e.dataTransfer.files);
-  if (files && files.length) {
-    bFiles.files = e.dataTransfer.files;
-    pickedFiles = files;
-    renderFileList();
-  }
-});
-
-function renderFileList() {
-  if (!pickedFiles.length) { bFileList.innerHTML = ''; return; }
-  const defaultTitle = $('#bMap').value || '';
-  bFileList.innerHTML = pickedFiles.map((f, i) => `
-    <div class="file-row">
-      <img class="file-row-thumb" src="${URL.createObjectURL(f)}" alt="预览">
-      <div class="file-row-info">
-        <div class="file-row-name">${esc(f.name)}</div>
-        <input type="text" class="file-row-title" maxlength="60" placeholder="点位描述"
-               value="${esc(defaultTitle)}">
-      </div>
-      <button type="button" class="btn-ghost" onclick="removeFile(${i})">移除</button>
-    </div>`).join('');
-}
-
-function removeFile(i) {
-  pickedFiles.splice(i, 1);
-  bFiles.value = '';
-  renderFileList();
-}
-
-$('#bulkForm').addEventListener('submit', async (e) => {
-  e.preventDefault();
-  const msg = $('#bMsg');
-  msg.hidden = true;
-
-  if (!$('#bCat').value || !$('#bGroup').value || !$('#bMap').value) {
-    showMsg(msg, '请完整选择分类、主题和地图', 'error');
-    return;
-  }
-  if (!pickedFiles.length) {
-    showMsg(msg, '请选择要上传的图片', 'error');
-    return;
-  }
-  const titles = Array.from(document.querySelectorAll('.file-row-title')).map(t => t.value.trim());
-  if (titles.some(t => !t)) {
-    showMsg(msg, '请为每张图片填写标题', 'error');
-    return;
-  }
-
-  const fd = new FormData();
-  fd.append('category_l1', $('#bCat').value);
-  fd.append('map_group_l2', $('#bGroup').value);
-  fd.append('map_name_l3', $('#bMap').value);
-  pickedFiles.forEach(f => fd.append('files', f));
-  titles.forEach(t => fd.append('titles', t));
-
-  const btn = $('#bSubmitBtn');
-  btn.disabled = true;
-  btn.textContent = '上传中...';
-  try {
-    const res = await fetch('/admin/bulk_upload', { method: 'POST', body: fd });
-    const data = await res.json();
-    if (data.ok) {
-      const fails = data.results.filter(r => !r.ok);
-      let text = '上传成功，已直接发布 ' + data.inserted + ' 条';
-      if (fails.length) text += '，' + fails.length + ' 条失败';
-      showMsg(msg, text, 'ok');
-      pickedFiles = [];
-      bFiles.value = '';
-      renderFileList();
-    } else {
-      showMsg(msg, data.error || '上传失败', 'error');
-    }
-  } catch (err) {
-    showMsg(msg, '网络错误，请重试', 'error');
-  } finally {
-    btn.disabled = false;
-    btn.textContent = '上传并直接发布';
-  }
-});
 
 loadList('pending');
 </script>
