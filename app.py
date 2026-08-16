@@ -83,18 +83,6 @@ L2_GROUPS = {
     "熊猫馆": ["熊猫馆"],
     "御门酒店": ["御门酒店"],
     "天宫": ["天宫", "天宫-云上"],
-    # 娱乐地图
-    "娱乐地图": [
-        "经典之家-疯狂奶酪赛",
-        "雪夜古堡-疯狂奶酪赛",
-        "金丝雀之家",
-        "熊猫馆-烟花大作战",
-        "阳光沙滩",
-        "后院",
-        "5V5大都会",
-        "家之典经",
-        "经典之家-谁是外星人",
-    ],
 }
 
 
@@ -114,7 +102,7 @@ def get_maps_for_l1_l2(l1, l2):
 
 # ---------------------------------------------------------------------------
 # 地图静态图片（来自 tjwiki 仓库 public/images/maps/）
-# thumb = 主题缩略图；full = 整图（仅常规地图有，娱乐地图为空）
+# thumb = 主题缩略图；full = 整图
 # ---------------------------------------------------------------------------
 
 # 主题族缩略图（I/II/III 变体共用主题图）
@@ -131,35 +119,20 @@ _THEME_THUMBS = {
     "天宫": "天宫.png",
 }
 
-# 娱乐地图缩略图（沿用 tjwiki specialImageUrl 规则）
-_FUN_THUMBS = {
-    "经典之家-疯狂奶酪赛": "经典之家-疯狂奶酪赛.png",
-    "雪夜古堡-疯狂奶酪赛": "雪夜古堡.png",
-    "金丝雀之家": "金丝雀之家.png",
-    "熊猫馆-烟花大作战": "熊猫馆.png",
-    "阳光沙滩": "阳光沙滩.png",
-    "后院": "经典之家.png",
-    "5V5大都会": "大都会.png",
-    "家之典经": "经典之家.png",
-    "经典之家-谁是外星人": "经典之家.png",
-}
-
 # 天宫-云上 有独立主题图
 _THEME_THUMBS["天宫-云上"] = "天宫-云上.png"
 
 
 def get_map_images(map_name):
     """返回 {thumb, full} 静态图片路径（/static/images/maps/ 下）。"""
-    # 缩略图：娱乐地图用专属图；常规地图变体（I/II/III）继承主题族缩略图
-    thumb = _FUN_THUMBS.get(map_name)
-    if thumb is None:
-        thumb = _THEME_THUMBS.get(map_name)
+    # 缩略图：变体（I/II/III）继承主题族缩略图
+    thumb = _THEME_THUMBS.get(map_name)
     if thumb is None:
         for group, maps in L2_GROUPS.items():
             if map_name in maps:
                 thumb = _THEME_THUMBS.get(group)
                 break
-    full = "" if map_name in _FUN_THUMBS else f"{map_name}-地图.png"
+    full = f"{map_name}-地图.png"
     return {
         "thumb": f"/static/images/maps/{thumb}" if thumb else "",
         "full": f"/static/images/maps/{full}" if full else "",

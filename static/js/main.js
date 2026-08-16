@@ -198,7 +198,7 @@
     pointsArea.hidden = false;
     pointsTitle.textContent = `${st.l1} · ${st.l2} · ${st.l3}`;
     const info = (state.mapsInfo || []).find(m => m.name === st.l3) || {};
-    // 地图整图横幅（娱乐地图无整图则不显示）
+    // 地图整图横幅（无整图则不显示）
     const banner = $('#mapBanner');
     if (info.full) {
       banner.hidden = false;
