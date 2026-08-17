@@ -156,6 +156,7 @@ CREATE TABLE IF NOT EXISTS points (
     thumb_url TEXT NOT NULL,
     original_url TEXT NOT NULL,
     images TEXT DEFAULT '[]',
+    maps TEXT DEFAULT '[]',
     status TEXT NOT NULL DEFAULT 'pending',
     submitter_email TEXT DEFAULT '',
     created_at TEXT NOT NULL
@@ -194,6 +195,10 @@ def init_db():
             "UPDATE points SET description = title WHERE description = '' OR description IS NULL"
         )
         conn.execute("UPDATE points SET title = 'untitle' WHERE title IS NOT 'untitle'")
+    # 多地图字段迁移：补充 maps 列并回填旧数据（map_name_l3 为主地图）
+    if "maps" not in cols:
+        conn.execute("ALTER TABLE points ADD COLUMN maps TEXT DEFAULT '[]'")
+        conn.execute("UPDATE points SET maps = json_array(map_name_l3) WHERE maps IS NULL OR maps = '[]'")
     conn.commit()
     conn.close()
 
@@ -381,6 +386,17 @@ def api_maps():
     return jsonify({"ok": True, "data": data})
 
 
+def _parse_maps(row):
+    """解析 maps JSON（多地图列表），空则回退为主地图 map_name_l3。"""
+    try:
+        maps = json.loads(row.get("maps") or "[]")
+    except (ValueError, TypeError):
+        maps = []
+    if not isinstance(maps, list) or not maps:
+        maps = [row["map_name_l3"]] if row.get("map_name_l3") else []
+    return maps
+
+
 @app.route("/api/points")
 def api_points():
     l1 = request.args.get("l1", "").strip()
@@ -397,8 +413,9 @@ def api_points():
         sql += " AND map_group_l2 = ?"
         args.append(l2)
     if l3:
-        sql += " AND map_name_l3 = ?"
-        args.append(l3)
+        # 多地图支持：匹配主地图 map_name_l3 或 maps 列表中的任一地图
+        sql += " AND (map_name_l3 = ? OR instr(maps, json_quote(?)) > 0)"
+        args += [l3, l3]
     sql += " ORDER BY id DESC"
 
     conn = get_db()
@@ -412,6 +429,7 @@ def api_points():
             item["images"] = json.loads(item.get("images") or "[]")
         except (ValueError, TypeError):
             item["images"] = []
+        item["maps"] = _parse_maps(item)
     return jsonify({"ok": True, "data": data})
 
 
@@ -419,7 +437,12 @@ def api_points():
 def api_submit():
     category_l1 = request.form.get("category_l1", "").strip()
     map_group_l2 = request.form.get("map_group_l2", "").strip()
-    map_name_l3 = request.form.get("map_name_l3", "").strip()
+    # 具体地图多选（兼容旧的单值 map_name_l3）
+    map_names = [m.strip() for m in request.form.getlist("map_names_l3") if m.strip()]
+    if not map_names:
+        single = request.form.get("map_name_l3", "").strip()
+        if single:
+            map_names = [single]
     title = request.form.get("title", "").strip()
     description = request.form.get("description", "").strip()
     submitter = request.form.get("submitter", "").strip()
@@ -430,8 +453,11 @@ def api_submit():
         return jsonify({"ok": False, "error": "请选择有效的分类"}), 400
     if map_group_l2 not in L2_GROUPS:
         return jsonify({"ok": False, "error": "请选择有效的地图主题"}), 400
-    if map_name_l3 not in L2_GROUPS[map_group_l2]:
-        return jsonify({"ok": False, "error": "请选择有效的具体地图"}), 400
+    if not map_names:
+        return jsonify({"ok": False, "error": "请至少选择一个具体地图"}), 400
+    for m in map_names:
+        if m not in L2_GROUPS[map_group_l2]:
+            return jsonify({"ok": False, "error": f"地图「{m}」不属于该主题"}), 400
     if not title:
         return jsonify({"ok": False, "error": "请填写标题"}), 400
     if len(title) > 60:
@@ -466,12 +492,18 @@ def api_submit():
     original_url = images[0]["original"]
     images_json = json.dumps(images, ensure_ascii=False)
 
+    # 去重并保持选择顺序；map_name_l3 记主地图（第一个）
+    seen = set()
+    maps_deduped = [m for m in map_names if not (m in seen or seen.add(m))]
+    map_name_l3 = maps_deduped[0]
+    maps_json = json.dumps(maps_deduped, ensure_ascii=False)
+
     conn = get_db()
     cur = conn.execute(
-        "INSERT INTO points (category_l1, map_group_l2, map_name_l3, title, description, "
+        "INSERT INTO points (category_l1, map_group_l2, map_name_l3, maps, title, description, "
         "tags, submitter, thumb_url, original_url, images, status, submitter_email, created_at) "
-        "VALUES (?, ?, ?, ?, ?, '', ?, ?, ?, ?, 'pending', ?, datetime('now', 'localtime'))",
-        (category_l1, map_group_l2, map_name_l3, title, description, submitter,
+        "VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, 'pending', ?, datetime('now', 'localtime'))",
+        (category_l1, map_group_l2, map_name_l3, maps_json, title, description, submitter,
          thumb_url, original_url, images_json, submitter_email),
     )
     conn.commit()
@@ -519,6 +551,7 @@ def admin_pending():
             item["images"] = json.loads(item.get("images") or "[]")
         except (ValueError, TypeError):
             item["images"] = []
+        item["maps"] = _parse_maps(item)
     return jsonify({"ok": True, "data": data})
 
 
@@ -608,7 +641,12 @@ def admin_edit(point_id):
 
     category_l1 = request.form.get("category_l1", "").strip()
     map_group_l2 = request.form.get("map_group_l2", "").strip()
-    map_name_l3 = request.form.get("map_name_l3", "").strip()
+    # 具体地图多选（兼容旧的单值 map_name_l3）
+    map_names = [m.strip() for m in request.form.getlist("map_names_l3") if m.strip()]
+    if not map_names:
+        single = request.form.get("map_name_l3", "").strip()
+        if single:
+            map_names = [single]
     title = request.form.get("title", "").strip()
     description = request.form.get("description", "").strip()
     submitter = request.form.get("submitter", "").strip()
@@ -618,8 +656,11 @@ def admin_edit(point_id):
         return jsonify({"ok": False, "error": "请选择有效的分类"}), 400
     if map_group_l2 not in L2_GROUPS:
         return jsonify({"ok": False, "error": "请选择有效的地图主题"}), 400
-    if map_name_l3 not in L2_GROUPS[map_group_l2]:
-        return jsonify({"ok": False, "error": "请选择有效的具体地图"}), 400
+    if not map_names:
+        return jsonify({"ok": False, "error": "请至少选择一个具体地图"}), 400
+    for m in map_names:
+        if m not in L2_GROUPS[map_group_l2]:
+            return jsonify({"ok": False, "error": f"地图「{m}」不属于该主题"}), 400
     if not title:
         return jsonify({"ok": False, "error": "请填写标题"}), 400
     if len(title) > 60:
@@ -635,11 +676,17 @@ def admin_edit(point_id):
     if not re.match(r"^[\w.\-+]+@[\w\-]+(\.[\w\-]+)+$", submitter_email):
         return jsonify({"ok": False, "error": "邮箱格式不正确"}), 400
 
+    # 去重并保持选择顺序；map_name_l3 记主地图（第一个）
+    seen = set()
+    maps_deduped = [m for m in map_names if not (m in seen or seen.add(m))]
+    map_name_l3 = maps_deduped[0]
+    maps_json = json.dumps(maps_deduped, ensure_ascii=False)
+
     conn = get_db()
     conn.execute(
-        "UPDATE points SET category_l1 = ?, map_group_l2 = ?, map_name_l3 = ?, "
+        "UPDATE points SET category_l1 = ?, map_group_l2 = ?, map_name_l3 = ?, maps = ?, "
         "title = ?, description = ?, submitter = ?, submitter_email = ? WHERE id = ?",
-        (category_l1, map_group_l2, map_name_l3, title, description, submitter,
+        (category_l1, map_group_l2, map_name_l3, maps_json, title, description, submitter,
          submitter_email, point_id),
     )
     conn.commit()

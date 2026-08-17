@@ -256,6 +256,7 @@
         </div>
         <div class="card-body">
           <div class="card-title">${esc(p.title)}</div>
+          ${p.maps && p.maps.length > 1 ? `<div class="card-maps">${p.maps.map(m => `<span class="map-tag">${esc(m)}</span>`).join('')}</div>` : ''}
           ${p.tags ? `<div class="card-tags">${esc(p.tags)}</div>` : ''}
         </div>
       </div>`;
@@ -318,7 +319,22 @@
   /* ---------------- 投稿弹窗 ---------------- */
 
   const submitModal = $('#submitModal');
-  const fCat = $('#fCat'), fGroup = $('#fGroup'), fMap = $('#fMap');
+  const fCat = $('#fCat'), fGroup = $('#fGroup'), fMapList = $('#fMapList');
+
+  function renderMapChecks(maps, container, checked) {
+    container.innerHTML = maps.map((m) => `
+      <label class="map-check-item">
+        <input type="checkbox" value="${esc(m.name)}" ${checked.has(m.name) ? 'checked' : ''}>
+        <span class="map-check-thumb">
+          ${m.thumb ? `<img src="${esc(m.thumb)}" alt="${esc(m.name)}" loading="lazy">` : '<span class="map-card-placeholder"></span>'}
+        </span>
+        <span class="map-check-name">${esc(m.name)}</span>
+      </label>`).join('');
+  }
+
+  function resetMapChecks(container) {
+    container.innerHTML = '<p class="form-hint">请先选择地图主题</p>';
+  }
 
   $('#navSubmit').addEventListener('click', openSubmitModal);
 
@@ -333,9 +349,8 @@
           cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
       } catch (e) { toast('分类加载失败'); return; }
       fGroup.innerHTML = '<option value="">先选分类</option>';
-      fMap.innerHTML = '<option value="">先选主题</option>';
+      resetMapChecks(fMapList);
       fGroup.disabled = true;
-      fMap.disabled = true;
     }
     submitModal.hidden = !submitModal.hidden;
   }
@@ -346,8 +361,7 @@
 
   fCat.addEventListener('change', async () => {
     fGroup.disabled = !fCat.value;
-    fMap.disabled = true;
-    fMap.innerHTML = '<option value="">先选主题</option>';
+    resetMapChecks(fMapList);
     if (!fCat.value) { fGroup.innerHTML = '<option value="">先选分类</option>'; return; }
     fGroup.innerHTML = '<option value="">加载中...</option>';
     try {
@@ -358,14 +372,12 @@
   });
 
   fGroup.addEventListener('change', async () => {
-    fMap.disabled = !fGroup.value;
-    if (!fGroup.value) { fMap.innerHTML = '<option value="">先选主题</option>'; return; }
-    fMap.innerHTML = '<option value="">加载中...</option>';
+    if (!fGroup.value) { resetMapChecks(fMapList); return; }
+    fMapList.innerHTML = '<p class="form-hint">加载中...</p>';
     try {
       const maps = await getJSON('/api/maps?l1=' + encodeURIComponent(fCat.value) +
         '&l2=' + encodeURIComponent(fGroup.value));
-      fMap.innerHTML = '<option value="">请选择</option>' +
-        maps.map(m => `<option value="${esc(m.name)}">${esc(m.name)}</option>`).join('');
+      renderMapChecks(maps, fMapList, new Set());
     } catch (e) { toast('地图加载失败'); }
   });
 
@@ -429,8 +441,14 @@
     const btn = $('#submitBtn');
     msg.hidden = true;
 
-    if (!fCat.value || !fGroup.value || !fMap.value) {
-      showMsg(msg, '请完整选择分类、主题和地图', 'error');
+    if (!fCat.value || !fGroup.value) {
+      showMsg(msg, '请选择分类和地图主题', 'error');
+      return;
+    }
+    const checkedMaps = Array.from(fMapList.querySelectorAll('input[type="checkbox"]:checked'))
+      .map(c => c.value);
+    if (!checkedMaps.length) {
+      showMsg(msg, '请至少选择一个具体地图', 'error');
       return;
     }
     if (!$('#fTitle').value.trim()) {
@@ -453,7 +471,7 @@
     const fd = new FormData();
     fd.append('category_l1', fCat.value);
     fd.append('map_group_l2', fGroup.value);
-    fd.append('map_name_l3', fMap.value);
+    checkedMaps.forEach(m => fd.append('map_names_l3', m));
     fd.append('title', $('#fTitle').value.trim());
     fd.append('description', $('#fDesc').value.trim());
     fd.append('submitter', $('#fSubmitter').value.trim());
@@ -471,8 +489,8 @@
         pickedFiles = [];
         syncFileInput();
         renderFileList();
+        resetMapChecks(fMapList);
         fGroup.disabled = true;
-        fMap.disabled = true;
       } else {
         showMsg(msg, data.error || '提交失败', 'error');
       }

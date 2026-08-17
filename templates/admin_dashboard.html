@@ -75,8 +75,11 @@
         <select name="map_group_l2" id="eGroup" required disabled><option value="">先选分类</option></select>
       </div>
       <div class="form-group">
-        <label>具体地图</label>
-        <select name="map_name_l3" id="eMap" required disabled><option value="">先选主题</option></select>
+        <label>具体地图（可多选）</label>
+        <p class="form-hint">同一主题下的地图点位通用，可同时关联多张地图</p>
+        <div class="map-check-grid" id="eMapList">
+          <p class="form-hint">请先选择地图主题</p>
+        </div>
       </div>
       <div class="form-group">
         <label>标题</label>
@@ -165,7 +168,7 @@ async function loadList(status) {
       </div>
       <div class="admin-info">
         <div class="admin-title">${esc(r.title)}</div>
-        <div class="admin-meta">${esc(r.category_l1)} · ${esc(r.map_group_l2)} · ${esc(r.map_name_l3)}</div>
+        <div class="admin-meta">${esc(r.category_l1)} · ${esc(r.map_group_l2)} · ${esc((r.maps && r.maps.length ? r.maps : [r.map_name_l3]).join(' / '))}</div>
         ${r.tags ? `<div class="admin-meta">标签：${esc(r.tags)}</div>` : ''}
         ${r.description ? `<div class="admin-meta">描述：${esc(r.description)}</div>` : ''}
         ${r.submitter ? `<div class="admin-meta">投稿人：${esc(r.submitter)}</div>` : ''}
@@ -229,11 +232,10 @@ async function initEditSelects() {
 
 async function fillEditGroups() {
   const g = $('#eGroup');
-  const m = $('#eMap');
-  if (!$('#eCat').value) { g.disabled = true; m.disabled = true; return; }
+  const mList = $('#eMapList');
+  if (!$('#eCat').value) { g.disabled = true; mList.innerHTML = '<p class="form-hint">请先选择地图主题</p>'; return; }
   g.disabled = false;
-  m.disabled = true;
-  m.innerHTML = '<option value="">先选主题</option>';
+  mList.innerHTML = '<p class="form-hint">请先选择地图主题</p>';
   g.innerHTML = '<option value="">加载中...</option>';
   try {
     const groups = await getJSON('/api/groups?l1=' + encodeURIComponent($('#eCat').value));
@@ -244,24 +246,32 @@ async function fillEditGroups() {
   } catch (e) { g.innerHTML = '<option value="">加载失败</option>'; }
 }
 
+function renderEditMapChecks(maps) {
+  const checked = new Set(editingRow.maps || [editingRow.map_name_l3]);
+  $('#eMapList').innerHTML = maps.map(m => `
+    <label class="map-check-item">
+      <input type="checkbox" value="${esc(m.name)}" ${checked.has(m.name) ? 'checked' : ''}>
+      <span class="map-check-thumb">
+        ${m.thumb ? `<img src="${esc(m.thumb)}" alt="${esc(m.name)}" loading="lazy">` : '<span class="map-card-placeholder"></span>'}
+      </span>
+      <span class="map-check-name">${esc(m.name)}</span>
+    </label>`).join('');
+}
+
 async function fillEditMaps() {
-  const m = $('#eMap');
-  if (!$('#eGroup').value) { m.disabled = true; m.innerHTML = '<option value="">先选主题</option>'; return; }
-  m.disabled = false;
-  m.innerHTML = '<option value="">加载中...</option>';
+  const mList = $('#eMapList');
+  if (!$('#eGroup').value) { mList.innerHTML = '<p class="form-hint">请先选择地图主题</p>'; return; }
+  mList.innerHTML = '<p class="form-hint">加载中...</p>';
   try {
     const maps = await getJSON('/api/maps?l1=' + encodeURIComponent($('#eCat').value) +
       '&l2=' + encodeURIComponent($('#eGroup').value));
-    m.innerHTML = '<option value="">请选择</option>' +
-      maps.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');
-    m.value = editingRow.map_name_l3;
-  } catch (e) { m.innerHTML = '<option value="">加载失败</option>'; }
+    renderEditMapChecks(maps);
+  } catch (e) { mList.innerHTML = '<p class="form-hint">加载失败</p>'; }
 }
 
 $('#eCat').addEventListener('change', () => {
   $('#eGroup').disabled = true;
-  $('#eMap').disabled = true;
-  $('#eMap').innerHTML = '<option value="">先选主题</option>';
+  $('#eMapList').innerHTML = '<p class="form-hint">请先选择地图主题</p>';
   fillEditGroups();
 });
 $('#eGroup').addEventListener('change', () => fillEditMaps());
@@ -276,8 +286,14 @@ $('#editForm').addEventListener('submit', async (e) => {
   const msg = $('#eMsg');
   msg.hidden = true;
 
-  if (!$('#eCat').value || !$('#eGroup').value || !$('#eMap').value) {
-    showMsg(msg, '请完整选择分类、主题和地图', 'error');
+  if (!$('#eCat').value || !$('#eGroup').value) {
+    showMsg(msg, '请选择分类和地图主题', 'error');
+    return;
+  }
+  const checkedMaps = Array.from($('#eMapList').querySelectorAll('input[type="checkbox"]:checked'))
+    .map(c => c.value);
+  if (!checkedMaps.length) {
+    showMsg(msg, '请至少选择一个具体地图', 'error');
     return;
   }
   if (!$('#eTitle').value.trim()) {
@@ -296,7 +312,7 @@ $('#editForm').addEventListener('submit', async (e) => {
   const fd = new FormData();
   fd.append('category_l1', $('#eCat').value);
   fd.append('map_group_l2', $('#eGroup').value);
-  fd.append('map_name_l3', $('#eMap').value);
+  checkedMaps.forEach(m => fd.append('map_names_l3', m));
   fd.append('title', $('#eTitle').value.trim());
   fd.append('description', $('#eDesc').value.trim());
   fd.append('submitter', $('#eSubmitter').value.trim());

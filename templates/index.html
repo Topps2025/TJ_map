@@ -102,8 +102,11 @@
         <select name="map_group_l2" id="fGroup" required disabled><option value="">先选分类</option></select>
       </div>
       <div class="form-group">
-        <label>具体地图</label>
-        <select name="map_name_l3" id="fMap" required disabled><option value="">先选主题</option></select>
+        <label>具体地图（可多选）</label>
+        <p class="form-hint">同一主题下的地图点位通用，一张投稿可同时关联多张地图</p>
+        <div class="map-check-grid" id="fMapList">
+          <p class="form-hint">请先选择地图主题</p>
+        </div>
       </div>
       <div class="form-group">
         <label>标题</label>
