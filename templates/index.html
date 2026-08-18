@@ -14,7 +14,6 @@
   <div class="header-inner">
     <a class="logo" href="/">猫和老鼠<span>点位查询</span></a>
     <nav class="header-nav">
-      <button class="nav-pill" id="navSubmit">投稿</button>
       <a class="nav-pill" href="/admin">后台</a>
       <button class="nav-icon-btn" id="darkToggle" aria-label="切换深色模式">
         <svg class="icon-sun" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
@@ -88,13 +87,21 @@
 
 </main>
 
+<!-- 右下角投稿卡片（随浏览层级自动预填字段） -->
+<button class="submit-fab" id="fabSubmit" hidden>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true">
+    <path stroke-linecap="round" stroke-linejoin="round" d="M12 5v14M5 12h14"/>
+  </svg>
+  <span>投稿</span>
+</button>
+
 <!-- 首页底部：网站说明 / 使用指南 / 反馈 / 官方资源 / 致谢 -->
 <footer class="site-footer">
   <div class="container">
     <section class="footer-section footer-about">
       <h2 class="footer-title">网站说明</h2>
       <p class="footer-text">
-        本站是《猫和老鼠》手游玩家自建的点位查询站，收录挂机果盘、炸药桶、点投、罗宾汉泰菲种树等玩法的地图点位。
+        本站是《猫和老鼠》手游玩家自建的点位查询站，收录挂机果盘、炸药桶、点投（实验）、藤蔓、贯穿线等玩法的地图点位。
         地图数据与命名以社区资料站为准，点位内容由玩家投稿、管理员审核后展示，供大家游戏时快速查用。
         项目已在 GitHub 开源，欢迎反馈问题或参与建设。
       </p>
@@ -106,7 +113,7 @@
         <ul class="footer-list">
           <li>① 顶部选择分类 → 地图主题 → 具体地图，浏览已审核点位</li>
           <li>② 点击点位卡片可查看原图与描述，多图可左右翻页</li>
-          <li>③ 点击「投稿」上传点位截图，填写标题、描述（可用 #标签）与联系方式</li>
+          <li>③ 点开地图大类或具体地图后，点击右下角「投稿」卡片上传点位截图，分类与地图会自动填好</li>
           <li>④ 投稿经管理员审核通过后，将在对应地图下展示</li>
         </ul>
       </section>

@@ -1176,6 +1176,36 @@ button { font-family: inherit; cursor: pointer; }
   opacity: 0.8;
 }
 
+/* ---------------- 右下角投稿卡片 ---------------- */
+
+.submit-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 90;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--wiki-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-display-stack);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+}
+.submit-fab svg { width: 18px; height: 18px; }
+.submit-fab:hover {
+  background: var(--wiki-primary-hover);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.45);
+}
+.submit-fab:active { transform: scale(0.96); }
+.submit-fab[hidden] { display: none; }
+
 /* ---------------- 响应式微调 ---------------- */
 
 @media (max-width: 480px) {

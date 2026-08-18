@@ -87,10 +87,12 @@
   /* ---------------- 视图渲染 ---------------- */
 
   function showCats() {
+    state.l1 = '';
     layer1.hidden = false;
     layer2.hidden = true;
     layer3.hidden = true;
     pointsArea.hidden = true;
+    fabSubmit.hidden = true;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -111,6 +113,7 @@
     layer2.hidden = false;
     layer3.hidden = true;
     pointsArea.hidden = true;
+    fabSubmit.hidden = false;
     renderIntro(state.cats.find(c => c.name === l1) || {});
     groupChips.innerHTML = '<div class="loading-text">加载主题中...</div>';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -157,6 +160,7 @@
     layer2.hidden = true;
     layer3.hidden = false;
     pointsArea.hidden = true;
+    fabSubmit.hidden = false;
     mapChips.innerHTML = maps.map((m, i) => `
       <button class="map-card animate-fadeInUp grid-item-${(i % 8) + 1}" data-name="${esc(m.name)}">
         <span class="map-card-thumb">
@@ -196,6 +200,7 @@
     layer2.hidden = true;
     layer3.hidden = true;
     pointsArea.hidden = false;
+    fabSubmit.hidden = false;
     pointsTitle.textContent = `${st.l1} · ${st.l2} · ${st.l3}`;
     const info = (state.mapsInfo || []).find(m => m.name === st.l3) || {};
     // 地图整图横幅（无整图则不显示）
@@ -243,7 +248,7 @@
 
   function renderPoints(points) {
     if (!points.length) {
-      pointsGrid.innerHTML = '<div class="empty">该地图暂无已审核点位，点击上方「投稿」按钮投稿</div>';
+      pointsGrid.innerHTML = '<div class="empty">该地图暂无已审核点位，点击右下角「投稿」卡片投稿</div>';
       return;
     }
     pointsGrid.innerHTML = points.map((p, i) => {
@@ -328,6 +333,7 @@
 
   const submitModal = $('#submitModal');
   const fCat = $('#fCat'), fGroup = $('#fGroup'), fMapList = $('#fMapList');
+  const fabSubmit = $('#fabSubmit');
 
   function renderMapChecks(maps, container, checked) {
     container.innerHTML = maps.map((m) => `
@@ -344,30 +350,18 @@
     container.innerHTML = '<p class="form-hint">请先选择地图主题</p>';
   }
 
-  $('#navSubmit').addEventListener('click', openSubmitModal);
-
-  async function openSubmitModal() {
-    if (submitModal.hidden) {
-      $('#formMsg').hidden = true;
-      $('#formMsg').className = 'form-msg';
-      // 载入分类下拉
-      try {
-        const cats = await getJSON('/api/categories');
-        fCat.innerHTML = '<option value="">请选择</option>' +
-          cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
-      } catch (e) { toast('分类加载失败'); return; }
-      fGroup.innerHTML = '<option value="">先选分类</option>';
-      resetMapChecks(fMapList);
-      fGroup.disabled = true;
-    }
-    submitModal.hidden = !submitModal.hidden;
+  // 分类下拉只加载一次（弹窗内选项不变）
+  let catsLoaded = false;
+  async function ensureCatsLoaded() {
+    if (catsLoaded) return;
+    const cats = await getJSON('/api/categories');
+    fCat.innerHTML = '<option value="">请选择</option>' +
+      cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+    catsLoaded = true;
   }
-  $('#closeSubmit').addEventListener('click', () => { submitModal.hidden = true; });
-  submitModal.addEventListener('click', (e) => {
-    if (e.target === submitModal) submitModal.hidden = true;
-  });
 
-  fCat.addEventListener('change', async () => {
+  // 按当前分类填充地图主题下拉
+  async function populateGroups() {
     fGroup.disabled = !fCat.value;
     resetMapChecks(fMapList);
     if (!fCat.value) { fGroup.innerHTML = '<option value="">先选分类</option>'; return; }
@@ -377,9 +371,10 @@
       fGroup.innerHTML = '<option value="">请选择</option>' +
         groups.map(g => `<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('');
     } catch (e) { toast('主题加载失败'); }
-  });
+  }
 
-  fGroup.addEventListener('change', async () => {
+  // 按当前分类+主题填充具体地图勾选列表
+  async function populateMaps() {
     if (!fGroup.value) { resetMapChecks(fMapList); return; }
     fMapList.innerHTML = '<p class="form-hint">加载中...</p>';
     try {
@@ -387,7 +382,42 @@
         '&l2=' + encodeURIComponent(fGroup.value));
       renderMapChecks(maps, fMapList, new Set());
     } catch (e) { toast('地图加载失败'); }
+  }
+
+  // 打开投稿弹窗并预填字段：prefill = {l1, l2, l3}
+  async function openSubmitModal(prefill) {
+    prefill = prefill || {};
+    submitModal.hidden = false;
+    $('#formMsg').hidden = true;
+    $('#formMsg').className = 'form-msg';
+    try {
+      await ensureCatsLoaded();
+    } catch (e) { toast('分类加载失败'); return; }
+    if (prefill.l1) fCat.value = prefill.l1;
+    await populateGroups();
+    if (prefill.l2 && Array.from(fGroup.options).some(o => o.value === prefill.l2)) {
+      fGroup.value = prefill.l2;
+    }
+    await populateMaps();
+    if (prefill.l3) {
+      // 预勾选当前具体地图
+      Array.from(fMapList.querySelectorAll('input[type="checkbox"]')).forEach(cb => {
+        cb.checked = cb.value === prefill.l3;
+      });
+    }
+  }
+
+  // 右下角投稿卡片：按当前浏览层级自动预填字段
+  fabSubmit.addEventListener('click', () => {
+    openSubmitModal({ l1: state.l1, l2: state.l2, l3: state.l3 });
   });
+  $('#closeSubmit').addEventListener('click', () => { submitModal.hidden = true; });
+  submitModal.addEventListener('click', (e) => {
+    if (e.target === submitModal) submitModal.hidden = true;
+  });
+
+  fCat.addEventListener('change', populateGroups);
+  fGroup.addEventListener('change', populateMaps);
 
   // 图片多选预览 + 拖拽
   const fImage = $('#fImage');

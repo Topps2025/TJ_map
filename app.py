@@ -43,16 +43,18 @@ app.config["MAX_CONTENT_LENGTH"] = config.MAX_UPLOAD_SIZE
 L1_CATEGORIES = [
     "挂机果盘点位",
     "炸药桶点位",
-    "投掷物点投点位",
-    "罗宾汉泰菲种树点位",
+    "投掷物点投(实验）",
+    "藤蔓点位",
+    "贯穿线点位",
 ]
 
 # 分类配图（图片取自 tjwiki 仓库 public/images/mice/）
 L1_CATEGORY_ICONS = {
     "挂机果盘点位": "/static/images/mice/恶魔泰菲.png",
     "炸药桶点位": "/static/images/mice/莱恩.png",
-    "投掷物点投点位": "/static/images/mice/航海士杰瑞.png",
-    "罗宾汉泰菲种树点位": "/static/images/mice/罗宾汉泰菲.png",
+    "投掷物点投(实验）": "/static/images/mice/航海士杰瑞.png",
+    "藤蔓点位": "/static/images/mice/罗宾汉泰菲.png",
+    "贯穿线点位": "/static/images/mice/梦游杰瑞.png",
 }
 
 # 分类介绍页内容（点击分类后先展示介绍，再进入地图选择）
@@ -61,14 +63,17 @@ L1_CATEGORY_ICONS = {
 L1_CATEGORY_INFO = {
     "挂机果盘点位": {"description": "", "tips": []},
     "炸药桶点位": {"description": "", "tips": []},
-    "投掷物点投点位": {"description": "", "tips": []},
-    "罗宾汉泰菲种树点位": {"description": "", "tips": []},
+    "投掷物点投(实验）": {"description": "", "tips": []},
+    "藤蔓点位": {"description": "", "tips": []},
+    "贯穿线点位": {"description": "", "tips": []},
 }
 
 # 分类改名迁移：旧分类 -> 新分类（几何桶/隔墙炸 合并为 炸药桶）
 L1_CATEGORY_MIGRATE = {
     "几何桶点位": "炸药桶点位",
     "莱恩隔墙炸点位": "炸药桶点位",
+    "投掷物点投点位": "投掷物点投(实验）",
+    "罗宾汉泰菲种树点位": "藤蔓点位",
 }
 
 # 常规地图（按主题族分组）
@@ -174,7 +179,7 @@ def get_db():
 def init_db():
     conn = get_db()
     conn.executescript(DB_SCHEMA)
-    # 旧分类名迁移（几何桶/隔墙炸 -> 炸药桶）
+    # 旧分类名迁移（几何桶/隔墙炸 -> 炸药桶；点投/种树 -> 新名）
     for old, new in L1_CATEGORY_MIGRATE.items():
         conn.execute("UPDATE points SET category_l1 = ? WHERE category_l1 = ?", (new, old))
     # 新字段迁移：补列 + 旧投稿标题统一为 untitle（原标题转入描述）
