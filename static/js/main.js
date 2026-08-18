@@ -142,7 +142,7 @@
     layer2.hidden = false;
     layer3.hidden = true;
     pointsArea.hidden = true;
-    fabSubmit.hidden = false;
+    fabSubmit.hidden = true;   // 点进具体分类的介绍页不显示投稿卡片（进入具体地图后再出现）
     renderIntro(state.cats.find(c => c.name === l1) || {});
     groupChips.innerHTML = '<div class="loading-text">加载主题中...</div>';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -438,6 +438,7 @@
   async function openSubmitModal(prefill) {
     prefill = prefill || {};
     const prevScroll = window.scrollY || document.documentElement.scrollTop || 0;
+    submitModal.classList.remove('closing');
     submitModal.hidden = false;
     lockBodyScroll(true);
     restoreScroll(prevScroll);
@@ -467,12 +468,18 @@
 
   // 关闭投稿弹窗（✕/遮罩/返回键共用），并清理返回键标记状态
   function closeSubmitModal() {
-    submitModal.hidden = true;
-    lockBodyScroll(false);
+    if (submitModal.classList.contains('closing')) return;   // 动画进行中，避免重复关闭
+    submitModal.classList.add('closing');
     if (submitPrevState !== null) {
       history.replaceState(submitPrevState, '');
       submitPrevState = null;
     }
+    // 等淡出动画播完再真正隐藏并解锁滚动
+    setTimeout(() => {
+      submitModal.classList.remove('closing');
+      submitModal.hidden = true;
+      lockBodyScroll(false);
+    }, 180);
   }
 
   // 右下角投稿卡片：按当前浏览层级自动预填字段
