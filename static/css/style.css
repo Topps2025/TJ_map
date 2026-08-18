@@ -247,13 +247,16 @@ button { font-family: inherit; cursor: pointer; }
   letter-spacing: -0.01em;
   color: var(--wiki-primary);
   text-shadow: 0 0 40px var(--wiki-primary-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 .dark .page-title { color: #60a5fa; }
 .page-title .page-title-icon {
-  height: 1em;         /* 与标题文字（34px）同高 */
+  height: 1.1em;       /* 略大于字高做光学补偿 */
   width: auto;
-  vertical-align: -0.12em;
-  margin-right: 6px;
+  flex-shrink: 0;
 }
 
 .page-desc {
