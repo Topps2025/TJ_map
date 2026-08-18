@@ -199,6 +199,13 @@ def init_db():
     if "maps" not in cols:
         conn.execute("ALTER TABLE points ADD COLUMN maps TEXT DEFAULT '[]'")
         conn.execute("UPDATE points SET maps = json_array(map_name_l3) WHERE maps IS NULL OR maps = '[]'")
+    # 标签回填：功能上线前的旧投稿，tags 为空但描述含 #标签 时重新提取
+    for row in conn.execute(
+        "SELECT id, description FROM points WHERE (tags IS NULL OR tags = '') AND description LIKE '%#%'"
+    ):
+        tags = _extract_tags(row["description"])
+        if tags:
+            conn.execute("UPDATE points SET tags = ? WHERE id = ?", (tags, row["id"]))
     conn.commit()
     conn.close()
 
