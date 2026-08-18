@@ -76,13 +76,21 @@
 
   function renderView(st) {
     if (!st) st = { v: 'cats' };
+    if (st.v === 'submit') return;   // 投稿弹窗标记状态：不渲染，仅用于返回键关闭弹窗
     if (st.v === 'maps') showMaps(st.l1);
     else if (st.v === 'groups') showGroups(st.l1, st.l2);
     else if (st.v === 'points') showPoints(st);
     else showCats();
   }
 
-  window.addEventListener('popstate', () => renderView(history.state));
+  window.addEventListener('popstate', () => {
+    // 投稿弹窗打开时按手机返回键：仅关闭弹窗，不改变当前浏览层级
+    if (!submitModal.hidden) {
+      closeSubmitModal();
+      return;
+    }
+    renderView(history.state);
+  });
 
   /* ---------------- 视图渲染 ---------------- */
 
@@ -334,6 +342,7 @@
   const submitModal = $('#submitModal');
   const fCat = $('#fCat'), fGroup = $('#fGroup'), fMapList = $('#fMapList');
   const fabSubmit = $('#fabSubmit');
+  let submitPrevState = null;   // 打开投稿弹窗前的视图状态（用于返回键关闭清理）
 
   function renderMapChecks(maps, container, checked) {
     container.innerHTML = maps.map((m) => `
@@ -390,6 +399,11 @@
     submitModal.hidden = false;
     $('#formMsg').hidden = true;
     $('#formMsg').className = 'form-msg';
+    // 压入标记状态：手机端点开投稿后按返回键时，先关闭弹窗而不是退出页面
+    if (submitPrevState === null) {
+      submitPrevState = history.state || { v: 'cats' };
+      history.pushState({ v: 'submit' }, '');
+    }
     try {
       await ensureCatsLoaded();
     } catch (e) { toast('分类加载失败'); return; }
@@ -407,13 +421,22 @@
     }
   }
 
+  // 关闭投稿弹窗（✕/遮罩/返回键共用），并清理返回键标记状态
+  function closeSubmitModal() {
+    submitModal.hidden = true;
+    if (submitPrevState !== null) {
+      history.replaceState(submitPrevState, '');
+      submitPrevState = null;
+    }
+  }
+
   // 右下角投稿卡片：按当前浏览层级自动预填字段
   fabSubmit.addEventListener('click', () => {
     openSubmitModal({ l1: state.l1, l2: state.l2, l3: state.l3 });
   });
-  $('#closeSubmit').addEventListener('click', () => { submitModal.hidden = true; });
+  $('#closeSubmit').addEventListener('click', closeSubmitModal);
   submitModal.addEventListener('click', (e) => {
-    if (e.target === submitModal) submitModal.hidden = true;
+    if (e.target === submitModal) closeSubmitModal();
   });
 
   fCat.addEventListener('change', populateGroups);
