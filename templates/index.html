@@ -95,60 +95,110 @@
   <span>投稿</span>
 </button>
 
-<!-- 首页底部：网站说明 / 使用指南 / 反馈 / 官方资源 / 致谢 -->
+<!-- 首页底部（1:1 仿 tjwiki：分隔线 + 网站说明 + CollapseCard 折叠卡 + 站点磁贴 + 版权行） -->
 <footer class="site-footer">
   <div class="container">
-    <section class="footer-section footer-about">
-      <h2 class="footer-title">网站说明</h2>
-      <p class="footer-text">
-        本站是《猫和老鼠》手游玩家自建的点位查询站，收录挂机果盘、炸药桶、实验性、藤蔓、贯穿线等玩法的地图点位。
-        地图数据与命名以社区资料站为准，点位内容由玩家投稿、管理员审核后展示，供大家游戏时快速查用。
-        项目已在 <a class="footer-link" href="https://github.com/Topps2025/TJ_map" target="_blank" rel="noopener noreferrer">GitHub</a> 开源，欢迎反馈问题或参与建设。
-      </p>
+
+    <!-- 分隔线 -->
+    <div class="footer-divider"></div>
+
+    <!-- 网站说明 -->
+    <section class="footer-about" aria-label="网站说明">
+      <h2 class="footer-about-title">网站说明</h2>
+      <div class="footer-about-body">
+        <p>
+          本站是《猫和老鼠》手游玩家自建的点位查询站，收录挂机果盘、几何桶、贯穿线等玩法的点位。
+          地图数据与命名以社区资料站为准，点位内容由玩家投稿、管理员审核后展示，供大家游戏时快速查用。
+          项目已在 <a class="footer-link" href="https://github.com/Topps2025/TJ_map" target="_blank" rel="noopener noreferrer">GitHub</a> 开源，欢迎反馈问题或参与建设。
+        </p>
+      </div>
     </section>
 
-    <nav class="footer-grid" aria-label="页脚导航">
-      <section class="footer-section">
-        <h2 class="footer-title">使用指南</h2>
-        <ul class="footer-list">
-          <li>① 顶部选择分类 → 地图主题 → 具体地图，浏览已审核点位</li>
-          <li>② 点击点位卡片可查看原图与描述，多图可左右翻页</li>
-          <li>③ 点开地图大类或具体地图后，点击右下角「投稿」卡片上传点位截图，分类与地图会自动填好</li>
-          <li>④ 投稿经管理员审核通过后，将在对应地图下展示</li>
-        </ul>
-      </section>
+    <!-- 折叠卡片（仿 tjwiki CollapseCard） -->
+    <div class="footer-cards">
+      <details class="wiki-card">
+        <summary class="wiki-card-head">
+          <span class="wiki-card-title">使用指南</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </summary>
+        <div class="wiki-card-body">
+          <ol class="footer-list">
+            <li>① 顶部选择分类 → 地图主题 → 具体地图，浏览已审核点位</li>
+            <li>② 点击点位卡片可查看原图与描述，多图可左右翻页</li>
+            <li>③ 点开地图大类或具体地图后，点击右下角「投稿」卡片上传点位截图，分类与地图会自动填好</li>
+            <li>④ 投稿经管理员审核通过后，将在对应地图下展示</li>
+          </ol>
+        </div>
+      </details>
 
-      <section class="footer-section">
-        <h2 class="footer-title">反馈渠道</h2>
-        <ul class="footer-list">
-          <li>网站问题、点位纠错或建议，请发送邮件至：</li>
-          <li><a class="footer-link" href="mailto:1248185594@qq.com">1248185594@qq.com</a></li>
-          <li class="footer-muted">也欢迎在 <a class="footer-link" href="https://github.com/Topps2025/TJ_map" target="_blank" rel="noopener noreferrer">GitHub</a> 提交 Issue 反馈</li>
-        </ul>
-      </section>
+      <details class="wiki-card">
+        <summary class="wiki-card-head">
+          <span class="wiki-card-title">反馈渠道</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </summary>
+        <div class="wiki-card-body">
+          <p>网站问题、点位纠错或建议，请发送邮件至：<a class="footer-link" href="mailto:1248185594@qq.com">1248185594@qq.com</a></p>
+          <p class="footer-muted">也欢迎在 <a class="footer-link" href="https://github.com/Topps2025/TJ_map" target="_blank" rel="noopener noreferrer">GitHub</a> 提交 Issue 反馈</p>
+        </div>
+      </details>
 
-      <section class="footer-section">
-        <h2 class="footer-title">网易官方资源</h2>
-        <ul class="footer-list">
-          <li><a class="footer-link" href="https://tom.163.com/" target="_blank" rel="noopener noreferrer">官方网站</a></li>
-          <li><a class="footer-link" href="https://ds.163.com/user/9c1c00448e28455781e8fde62830160d/" target="_blank" rel="noopener noreferrer">网易大神</a></li>
-          <li><a class="footer-link" href="https://weibo.com/tnj163" target="_blank" rel="noopener noreferrer">官方微博</a></li>
-          <li><a class="footer-link" href="https://space.bilibili.com/298683153" target="_blank" rel="noopener noreferrer">B站官方</a></li>
-        </ul>
-      </section>
+      <details class="wiki-card">
+        <summary class="wiki-card-head">
+          <span class="wiki-card-title">致谢</span>
+          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
+          </svg>
+        </summary>
+        <div class="wiki-card-body">
+          <p class="footer-muted">感谢所有投稿人、审核管理员与测试玩家；致谢名单持续更新中......</p>
+          <p class="thanks-line">
+            <a class="footer-link" href="https://tjwiki.com" target="_blank" rel="noopener noreferrer">猫鼠wiki</a>
+            <a class="footer-link" href="https://space.bilibili.com/1824497379" target="_blank" rel="noopener noreferrer">牛牛</a>
+            <a class="footer-link" href="https://space.bilibili.com/610046657" target="_blank" rel="noopener noreferrer">裕博yb</a>
+            <a class="footer-link" href="https://space.bilibili.com/34094591" target="_blank" rel="noopener noreferrer">摸鱼酵母</a>
+          </p>
+        </div>
+      </details>
+    </div>
 
-      <section class="footer-section">
-        <h2 class="footer-title">致谢</h2>
-        <ul class="footer-list">
-          <li class="footer-muted">感谢所有投稿人、审核管理员与测试玩家</li>
-          <li><a class="footer-link" href="https://tjwiki.com" target="_blank" rel="noopener noreferrer">猫鼠wiki</a></li>
-          <li><a class="footer-link" href="https://space.bilibili.com/1824497379" target="_blank" rel="noopener noreferrer">牛牛</a></li>
-          <li><a class="footer-link" href="https://space.bilibili.com/610046657" target="_blank" rel="noopener noreferrer">裕博yb</a></li>
-          <li><a class="footer-link" href="https://space.bilibili.com/34094591" target="_blank" rel="noopener noreferrer">摸鱼酵母</a></li>
-          <li class="footer-muted">（致谢名单持续更新中......）</li>
-        </ul>
-      </section>
-    </nav>
+    <!-- 网易官方资源（站点磁贴卡片，仿 tjwiki 站点列表 ActionTile） -->
+    <div class="footer-sites-wrap">
+      <h2 class="footer-sites-title">网易官方资源</h2>
+      <div class="footer-sites">
+        <a class="site-tile" href="https://tom.163.com/" target="_blank" rel="noopener noreferrer">
+          <svg class="site-tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>
+          </svg>
+          <span class="site-tile-name">官方网站</span>
+          <span class="site-tile-desc">tom.163.com</span>
+        </a>
+        <a class="site-tile" href="https://ds.163.com/user/9c1c00448e28455781e8fde62830160d/" target="_blank" rel="noopener noreferrer">
+          <svg class="site-tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>
+          </svg>
+          <span class="site-tile-name">网易大神</span>
+          <span class="site-tile-desc">ds.163.com</span>
+        </a>
+        <a class="site-tile" href="https://weibo.com/tnj163" target="_blank" rel="noopener noreferrer">
+          <svg class="site-tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>
+          </svg>
+          <span class="site-tile-name">官方微博</span>
+          <span class="site-tile-desc">weibo.com/tnj163</span>
+        </a>
+        <a class="site-tile" href="https://space.bilibili.com/298683153" target="_blank" rel="noopener noreferrer">
+          <svg class="site-tile-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true">
+            <circle cx="12" cy="12" r="9"/><path stroke-linecap="round" d="M3 12h18M12 3a15 15 0 0 1 0 18M12 3a15 15 0 0 0 0 18"/>
+          </svg>
+          <span class="site-tile-name">B站官方</span>
+          <span class="site-tile-desc">space.bilibili.com</span>
+        </a>
+      </div>
+    </div>
 
     <p class="footer-copyright">
       本站为玩家社区非官方站点，与网易官方无关；游戏素材版权归网易所有。
