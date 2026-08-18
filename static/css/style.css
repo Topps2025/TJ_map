@@ -165,6 +165,12 @@ button { font-family: inherit; cursor: pointer; }
   align-self: center;
   margin-right: 2px;
 }
+.logo .logo-credit {
+  color: var(--wiki-primary);
+  text-decoration: none;
+  transition: text-decoration 0.15s ease;
+}
+.logo .logo-credit:hover { text-decoration: underline; }
 
 .header-nav {
   display: flex;
