@@ -108,8 +108,29 @@
     $('#introIcon').src = info.icon || '';
     $('#introIcon').alt = info.name || '';
     $('#introTitle').textContent = info.name || '';
-    $('#introDesc').textContent = info.description || '';
+    $('#introDesc').innerHTML = linkifyText(info.description);
     $('#introTips').innerHTML = (info.tips || []).map(t => `<li>${esc(t)}</li>`).join('');
+  }
+
+  // 分类介绍文案：转义后把 [文字](链接) 与裸 http(s) 链接渲染为可点击超链接
+  function linkifyText(text) {
+    if (!text) return '';
+    let html = esc(text);
+    const anchors = [];
+    // 1) 显式链接：[文字](https://...)
+    html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (m, t, u) => {
+      const token = '\u0000' + anchors.length + '\u0000';
+      anchors.push(`<a class="intro-link" href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`);
+      return token;
+    });
+    // 2) 裸链接自动转超链接（排除中文全角括号等结尾符号）
+    html = html.replace(/(https?:\/\/[^\s<>"'（）()]+)/g, (m, u) => {
+      const token = '\u0000' + anchors.length + '\u0000';
+      anchors.push(`<a class="intro-link" href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
+      return token;
+    });
+    // 3) 还原锚点
+    return html.replace(/\u0000(\d+)\u0000/g, (m, i) => anchors[+i] || '');
   }
 
   async function showMaps(l1) {
