@@ -306,6 +306,18 @@
       card.addEventListener('click', () => openLightbox(points, +card.dataset.point)));
   }
 
+  /* ---------------- 弹层滚动锁定（移动端点投稿/看原图时页面不乱滚） ---------------- */
+
+  function lockBodyScroll(lock) {
+    document.body.style.overflow = lock ? 'hidden' : '';
+  }
+
+  // 弹层打开后还原滚动位置：部分移动浏览器会在遮罩显示时滚动页面（如把视口“对焦”到页脚的固定按钮）
+  function restoreScroll(prevScroll) {
+    const cur = window.scrollY || document.documentElement.scrollTop || 0;
+    if (cur !== prevScroll) window.scrollTo(0, prevScroll);
+  }
+
   /* ---------------- 原图灯箱（多图翻页） ---------------- */
 
   let lbItems = [];   // [{ src, title, desc }]
@@ -321,7 +333,15 @@
     lbItems = flat;
     lbIndex = Math.max(0, Math.min(firstIdx[pointIdx] ?? 0, flat.length - 1));
     renderLb();
+    const prevScroll = window.scrollY || document.documentElement.scrollTop || 0;
     $('#lightbox').hidden = false;
+    lockBodyScroll(true);
+    restoreScroll(prevScroll);
+  }
+
+  function closeLightbox() {
+    $('#lightbox').hidden = true;
+    lockBodyScroll(false);
   }
 
   function renderLb() {
@@ -345,17 +365,17 @@
     renderLb();
   }
 
-  $('#closeLightbox').addEventListener('click', () => { $('#lightbox').hidden = true; });
+  $('#closeLightbox').addEventListener('click', closeLightbox);
   $('#lbPrev').addEventListener('click', (e) => { e.stopPropagation(); lbStep(-1); });
   $('#lbNext').addEventListener('click', (e) => { e.stopPropagation(); lbStep(1); });
   $('#lightbox').addEventListener('click', (e) => {
-    if (e.target === $('#lightbox')) $('#lightbox').hidden = true;
+    if (e.target === $('#lightbox')) closeLightbox();
   });
   document.addEventListener('keydown', (e) => {
     if ($('#lightbox').hidden) return;
     if (e.key === 'ArrowLeft') lbStep(-1);
     else if (e.key === 'ArrowRight') lbStep(1);
-    else if (e.key === 'Escape') $('#lightbox').hidden = true;
+    else if (e.key === 'Escape') closeLightbox();
   });
 
   /* ---------------- 投稿弹窗 ---------------- */
@@ -417,7 +437,10 @@
   // 打开投稿弹窗并预填字段：prefill = {l1, l2, l3}
   async function openSubmitModal(prefill) {
     prefill = prefill || {};
+    const prevScroll = window.scrollY || document.documentElement.scrollTop || 0;
     submitModal.hidden = false;
+    lockBodyScroll(true);
+    restoreScroll(prevScroll);
     $('#formMsg').hidden = true;
     $('#formMsg').className = 'form-msg';
     // 压入标记状态：手机端点开投稿后按返回键时，先关闭弹窗而不是退出页面
@@ -445,6 +468,7 @@
   // 关闭投稿弹窗（✕/遮罩/返回键共用），并清理返回键标记状态
   function closeSubmitModal() {
     submitModal.hidden = true;
+    lockBodyScroll(false);
     if (submitPrevState !== null) {
       history.replaceState(submitPrevState, '');
       submitPrevState = null;
@@ -455,6 +479,8 @@
   fabSubmit.addEventListener('click', () => {
     openSubmitModal({ l1: state.l1, l2: state.l2, l3: state.l3 });
   });
+  // 阻止移动端点击后浏览器把焦点滚到页脚附近（固定按钮在文档坐标里的位置），导致画面跳到网站说明/致谢
+  fabSubmit.addEventListener('mousedown', (e) => e.preventDefault());
   $('#closeSubmit').addEventListener('click', closeSubmitModal);
   submitModal.addEventListener('click', (e) => {
     if (e.target === submitModal) closeSubmitModal();
