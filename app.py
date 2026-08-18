@@ -43,7 +43,7 @@ app.config["MAX_CONTENT_LENGTH"] = config.MAX_UPLOAD_SIZE
 L1_CATEGORIES = [
     "挂机果盘点位",
     "炸药桶点位",
-    "投掷物点投(实验）",
+    "实验性点位",
     "藤蔓点位",
     "贯穿线点位",
 ]
@@ -52,7 +52,7 @@ L1_CATEGORIES = [
 L1_CATEGORY_ICONS = {
     "挂机果盘点位": "/static/images/mice/恶魔泰菲.png",
     "炸药桶点位": "/static/images/mice/莱恩.png",
-    "投掷物点投(实验）": "/static/images/mice/航海士杰瑞.png",
+    "实验性点位": "/static/images/mice/航海士杰瑞.png",
     "藤蔓点位": "/static/images/mice/罗宾汉泰菲.png",
     "贯穿线点位": "/static/images/mice/梦游杰瑞.png",
 }
@@ -63,7 +63,7 @@ L1_CATEGORY_ICONS = {
 L1_CATEGORY_INFO = {
     "挂机果盘点位": {"description": "", "tips": []},
     "炸药桶点位": {"description": "", "tips": []},
-    "投掷物点投(实验）": {"description": "", "tips": []},
+    "实验性点位": {"description": "", "tips": []},
     "藤蔓点位": {"description": "", "tips": []},
     "贯穿线点位": {"description": "", "tips": []},
 }
@@ -72,7 +72,8 @@ L1_CATEGORY_INFO = {
 L1_CATEGORY_MIGRATE = {
     "几何桶点位": "炸药桶点位",
     "莱恩隔墙炸点位": "炸药桶点位",
-    "投掷物点投点位": "投掷物点投(实验）",
+    "投掷物点投点位": "实验性点位",
+    "投掷物点投(实验）": "实验性点位",
     "罗宾汉泰菲种树点位": "藤蔓点位",
 }
 
