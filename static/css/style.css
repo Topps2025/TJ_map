@@ -159,6 +159,12 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 13px;
   font-weight: 500;
 }
+.logo .logo-icon {
+  height: 1.25em;      /* 与页眉文字（19px）视觉对齐 */
+  width: auto;
+  align-self: center;
+  margin-right: 2px;
+}
 
 .header-nav {
   display: flex;
@@ -243,6 +249,12 @@ button { font-family: inherit; cursor: pointer; }
   text-shadow: 0 0 40px var(--wiki-primary-soft);
 }
 .dark .page-title { color: #60a5fa; }
+.page-title .page-title-icon {
+  height: 1em;         /* 与标题文字（34px）同高 */
+  width: auto;
+  vertical-align: -0.12em;
+  margin-right: 6px;
+}
 
 .page-desc {
   margin-top: 8px;
