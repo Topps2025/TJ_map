@@ -257,7 +257,7 @@
         <div class="card-body">
           <div class="card-title">${esc(p.title)}</div>
           ${p.maps && p.maps.length > 1 ? `<div class="card-maps">${p.maps.map(m => `<span class="map-tag">${esc(m)}</span>`).join('')}</div>` : ''}
-          ${p.tags ? `<div class="card-tags">${p.tags.split(/\s+/).filter(Boolean).map(t => `<span class="tag-chip">#${esc(t)}</span>`).join('')}</div>` : ''}
+          ${p.tags ? `<div class="card-tags">${p.tags.split(/\s+/).filter(Boolean).map(t => `<span class="tag-chip">${esc(t)}</span>`).join('')}</div>` : ''}
         </div>
       </div>`;
     }).join('');
@@ -274,7 +274,7 @@
 
   /* ---------------- 原图灯箱（多图翻页） ---------------- */
 
-  let lbItems = [];   // [{ src, title }]
+  let lbItems = [];   // [{ src, title, desc }]
   let lbIndex = 0;
 
   function openLightbox(points, pointIdx) {
@@ -282,7 +282,7 @@
     const firstIdx = [];
     points.forEach(p => {
       firstIdx.push(flat.length);
-      getPointImages(p).forEach(im => flat.push({ src: im.original, title: p.title }));
+      getPointImages(p).forEach(im => flat.push({ src: im.original, title: p.title, desc: p.description || '' }));
     });
     lbItems = flat;
     lbIndex = Math.max(0, Math.min(firstIdx[pointIdx] ?? 0, flat.length - 1));
@@ -294,6 +294,14 @@
     const item = lbItems[lbIndex];
     $('#lbImg').src = item.src;
     $('#lbTitle').textContent = `${item.title}（${lbIndex + 1}/${lbItems.length}）`;
+    const descEl = $('#lbDesc');
+    if (item.desc) {
+      descEl.textContent = item.desc;
+      descEl.hidden = false;
+    } else {
+      descEl.textContent = '';
+      descEl.hidden = true;
+    }
     $('#lbPrev').hidden = lbItems.length <= 1;
     $('#lbNext').hidden = lbItems.length <= 1;
   }

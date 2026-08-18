@@ -974,6 +974,14 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 14px;
   color: var(--wiki-muted-foreground);
 }
+.lightbox-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--wiki-foreground);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
 
 .lb-nav {
   position: absolute;
@@ -1115,6 +1123,57 @@ button { font-family: inherit; cursor: pointer; }
 @media (prefers-reduced-motion: reduce) {
   .animate-fadeInUp { animation: none !important; }
   html { scroll-behavior: auto; }
+}
+
+/* ---------------- 首页底部（仿 tjwiki） ---------------- */
+
+.site-footer {
+  margin-top: 40px;
+  border-top: 1px solid var(--wiki-border);
+  background: var(--wiki-surface);
+  padding: 32px 0 40px;
+}
+.footer-section { margin-bottom: 22px; }
+.footer-about { border-bottom: 1px solid var(--wiki-border); padding-bottom: 20px; }
+.footer-title {
+  font-size: 15px;
+  font-weight: 700;
+  color: var(--wiki-foreground);
+  margin-bottom: 10px;
+}
+.footer-text {
+  font-size: 13px;
+  line-height: 1.8;
+  color: var(--wiki-muted-foreground);
+}
+.footer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 26px;
+  margin-top: 24px;
+}
+.footer-list { list-style: none; }
+.footer-list li {
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--wiki-muted-foreground);
+}
+.footer-link {
+  color: var(--wiki-primary);
+  text-decoration: none;
+  word-break: break-all;
+}
+.footer-link:hover { text-decoration: underline; }
+.footer-muted { color: var(--wiki-muted-foreground); opacity: 0.85; }
+.footer-copyright {
+  margin-top: 26px;
+  padding-top: 16px;
+  border-top: 1px solid var(--wiki-border);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--wiki-muted-foreground);
+  text-align: center;
+  opacity: 0.8;
 }
 
 /* ---------------- 响应式微调 ---------------- */

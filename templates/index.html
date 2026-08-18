@@ -35,7 +35,7 @@
 
   <header class="page-header">
     <h1 class="page-title">点位查询</h1>
-    <p class="page-desc">挂机果盘 · 炸药桶 · 点投 · 种树</p>
+    
     <p class="page-sub">选择分类与地图，快速浏览玩家分享的点位</p>
   </header>
 
@@ -87,6 +87,63 @@
   </section>
 
 </main>
+
+<!-- 首页底部：网站说明 / 使用指南 / 反馈 / 官方资源 / 致谢 -->
+<footer class="site-footer">
+  <div class="container">
+    <section class="footer-section footer-about">
+      <h2 class="footer-title">网站说明</h2>
+      <p class="footer-text">
+        本站是《猫和老鼠》手游玩家自建的点位查询站，收录挂机果盘、炸药桶、点投、罗宾汉泰菲种树等玩法的地图点位。
+        地图数据与命名以社区资料站为准，点位内容由玩家投稿、管理员审核后展示，供大家游戏时快速查用。
+        项目已在 GitHub 开源，欢迎反馈问题或参与建设。
+      </p>
+    </section>
+
+    <nav class="footer-grid" aria-label="页脚导航">
+      <section class="footer-section">
+        <h2 class="footer-title">使用指南</h2>
+        <ul class="footer-list">
+          <li>① 顶部选择分类 → 地图主题 → 具体地图，浏览已审核点位</li>
+          <li>② 点击点位卡片可查看原图与描述，多图可左右翻页</li>
+          <li>③ 点击「投稿」上传点位截图，填写标题、描述（可用 #标签）与联系方式</li>
+          <li>④ 投稿经管理员审核通过后，将在对应地图下展示</li>
+        </ul>
+      </section>
+
+      <section class="footer-section">
+        <h2 class="footer-title">反馈渠道</h2>
+        <ul class="footer-list">
+          <li>网站问题、点位纠错或建议，请发送邮件至：</li>
+          <li><a class="footer-link" href="mailto:1248185594@qq.com">1248185594@qq.com</a></li>
+          <li class="footer-muted">也欢迎在 GitHub 提交 Issue 反馈</li>
+        </ul>
+      </section>
+
+      <section class="footer-section">
+        <h2 class="footer-title">网易官方资源</h2>
+        <ul class="footer-list">
+          <li><a class="footer-link" href="https://tom.163.com/" target="_blank" rel="noopener noreferrer">官方网站</a></li>
+          <li><a class="footer-link" href="https://ds.163.com/user/9c1c00448e28455781e8fde62830160d/" target="_blank" rel="noopener noreferrer">网易大神</a></li>
+          <li><a class="footer-link" href="https://weibo.com/tnj163" target="_blank" rel="noopener noreferrer">官方微博</a></li>
+          <li><a class="footer-link" href="https://space.bilibili.com/298683153" target="_blank" rel="noopener noreferrer">B站官方</a></li>
+        </ul>
+      </section>
+
+      <section class="footer-section">
+        <h2 class="footer-title">致谢</h2>
+        <ul class="footer-list">
+          <li class="footer-muted">感谢所有投稿人、审核管理员与测试玩家</li>
+          <li class="footer-muted">（致谢名单待补充）</li>
+        </ul>
+      </section>
+    </nav>
+
+    <p class="footer-copyright">
+      本站为玩家社区非官方站点，与网易官方无关；游戏素材版权归网易所有。
+    </p>
+  </div>
+</footer>
 
 <!-- 投稿弹窗 -->
 <div class="modal-mask" id="submitModal" hidden>
@@ -147,6 +204,7 @@
     <img id="lbImg" src="" alt="点位原图">
     <button class="lb-nav lb-next" id="lbNext" aria-label="下一张">›</button>
     <p id="lbTitle" class="lightbox-title"></p>
+    <p id="lbDesc" class="lightbox-desc" hidden></p>
   </div>
 </div>
 
