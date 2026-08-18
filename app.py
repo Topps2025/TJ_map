@@ -282,7 +282,17 @@ def send_notify_email(title, submitter, submitter_email):
     send_email(config.ADMIN_NOTIFY_EMAIL, config.EMAIL_SUBJECT, body)
 
 
-def send_submitter_email(submitter, to_addr, status, title):
+def _extract_tags(description):
+    """从描述中提取 # 标签，如 '#果盘 #墙角' -> '果盘 墙角'（去重、保持顺序）。"""
+    if not description:
+        return ''
+    tags = re.findall(r"#([^\s#]+)", description)
+    seen = set()
+    uniq = [t for t in tags if not (t in seen or seen.add(t))]
+    return " ".join(uniq)
+
+
+def send_submitter_email(submitter, to_addr, status, title, reason=""):
     """向投稿人发送邮件（问候语 + 状态通知）。失败静默。"""
     greet = f"您好，{submitter or '玩家'}："
     name = title or "untitle"
@@ -305,8 +315,9 @@ def send_submitter_email(submitter, to_addr, status, title):
         subject = "【猫和老鼠点位】投稿未通过审核"
         body = (
             f"{greet}\n\n"
-            f"很遗憾，您投稿的点位《{name}》未通过审核，已删除。\n\n"
-            "如有疑问可重新投稿，祝您游戏愉快！\n"
+            f"很遗憾，您投稿的点位《{name}》未通过审核，已删除。\n"
+            + (f"拒绝原因：{reason}\n" if reason else "")
+            + "\n如有疑问可重新投稿，祝您游戏愉快！\n"
         )
     send_email(to_addr, subject, body)
 
@@ -492,6 +503,9 @@ def api_submit():
     original_url = images[0]["original"]
     images_json = json.dumps(images, ensure_ascii=False)
 
+    # 描述中的 #标签 -> tags 列（如 #果盘 #墙角）
+    tags = _extract_tags(description)
+
     # 去重并保持选择顺序；map_name_l3 记主地图（第一个）
     seen = set()
     maps_deduped = [m for m in map_names if not (m in seen or seen.add(m))]
@@ -502,8 +516,8 @@ def api_submit():
     cur = conn.execute(
         "INSERT INTO points (category_l1, map_group_l2, map_name_l3, maps, title, description, "
         "tags, submitter, thumb_url, original_url, images, status, submitter_email, created_at) "
-        "VALUES (?, ?, ?, ?, ?, ?, '', ?, ?, ?, ?, 'pending', ?, datetime('now', 'localtime'))",
-        (category_l1, map_group_l2, map_name_l3, maps_json, title, description, submitter,
+        "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, datetime('now', 'localtime'))",
+        (category_l1, map_group_l2, map_name_l3, maps_json, title, description, tags, submitter,
          thumb_url, original_url, images_json, submitter_email),
     )
     conn.commit()
@@ -608,12 +622,13 @@ def admin_reject(point_id):
     row = _find_point(point_id)
     if not row:
         return jsonify({"ok": False, "error": "记录不存在"}), 404
+    reason = request.form.get("reason", "").strip()
     _remove_point_files(row)
     conn = get_db()
     conn.execute("DELETE FROM points WHERE id = ?", (point_id,))
     conn.commit()
     conn.close()
-    send_submitter_email(row["submitter"], row["submitter_email"], "rejected", row["title"])
+    send_submitter_email(row["submitter"], row["submitter_email"], "rejected", row["title"], reason)
     return jsonify({"ok": True, "message": "已拒绝并删除"})
 
 
@@ -681,12 +696,13 @@ def admin_edit(point_id):
     maps_deduped = [m for m in map_names if not (m in seen or seen.add(m))]
     map_name_l3 = maps_deduped[0]
     maps_json = json.dumps(maps_deduped, ensure_ascii=False)
+    tags = _extract_tags(description)
 
     conn = get_db()
     conn.execute(
         "UPDATE points SET category_l1 = ?, map_group_l2 = ?, map_name_l3 = ?, maps = ?, "
-        "title = ?, description = ?, submitter = ?, submitter_email = ? WHERE id = ?",
-        (category_l1, map_group_l2, map_name_l3, maps_json, title, description, submitter,
+        "title = ?, description = ?, tags = ?, submitter = ?, submitter_email = ? WHERE id = ?",
+        (category_l1, map_group_l2, map_name_l3, maps_json, title, description, tags, submitter,
          submitter_email, point_id),
     )
     conn.commit()

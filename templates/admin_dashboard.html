@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <meta name="robots" content="noindex">
   <title>审核后台 · 猫和老鼠点位</title>
+  <link rel="icon" type="image/png" href="/static/images/mice/莱恩.png">
   <script src="/static/js/theme.js"></script>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
@@ -187,7 +188,14 @@ async function loadList(status) {
 }
 
 async function act(id, action) {
-  const res = await fetch('/admin/' + action + '/' + id, { method: 'POST' });
+  let body = null;
+  if (action === 'reject') {
+    const reason = prompt('请输入拒绝原因（选填，将发送给投稿人）：');
+    if (reason === null) return; // 用户取消
+    body = new URLSearchParams();
+    body.set('reason', reason.trim());
+  }
+  const res = await fetch('/admin/' + action + '/' + id, { method: 'POST', body });
   const data = await res.json();
   if (!data.ok) { alert(data.error || '操作失败'); return; }
   loadList(currentStatus);

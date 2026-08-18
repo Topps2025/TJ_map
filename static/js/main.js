@@ -257,7 +257,7 @@
         <div class="card-body">
           <div class="card-title">${esc(p.title)}</div>
           ${p.maps && p.maps.length > 1 ? `<div class="card-maps">${p.maps.map(m => `<span class="map-tag">${esc(m)}</span>`).join('')}</div>` : ''}
-          ${p.tags ? `<div class="card-tags">${esc(p.tags)}</div>` : ''}
+          ${p.tags ? `<div class="card-tags">${p.tags.split(/\s+/).filter(Boolean).map(t => `<span class="tag-chip">#${esc(t)}</span>`).join('')}</div>` : ''}
         </div>
       </div>`;
     }).join('');

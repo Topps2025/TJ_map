@@ -617,15 +617,23 @@ button { font-family: inherit; cursor: pointer; }
 .dark .card-title { color: #fff; }
 
 .card-tags {
-  margin-top: 5px;
-  font-size: 11px;
-  line-height: 1.4;
-  color: var(--wiki-primary);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
 }
-.dark .card-tags { color: #60a5fa; }
+.tag-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  font-size: 11px;
+  line-height: 1.5;
+  border-radius: 999px;
+  color: var(--wiki-primary);
+  background: color-mix(in srgb, var(--wiki-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--wiki-primary) 22%, transparent);
+}
+.dark .tag-chip { color: #93c5fd; background: rgba(59, 130, 246, 0.14); border-color: rgba(59, 130, 246, 0.3); }
 
 .multi-badge {
   position: absolute;

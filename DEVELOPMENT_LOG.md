@@ -121,3 +121,35 @@
 
 - 提交信息：`feat: 移除娱乐地图大类`
 - 涉及文件：`app.py`、`static/js/main.js`（注释）、`static/images/maps/`（删 3 图）、`HANDOFF.md`、`DEVELOPMENT_LOG.md`
+
+---
+
+## 2026-08-17（第四轮 · 标签 / gitignore / 图标 / 拒绝原因）
+
+### 一、投稿描述支持 #标签
+
+- `app.py` 新增 `_extract_tags()`：从描述中提取 `#标签`（如 `#果盘 #墙角`），去重、保持顺序，空格分隔存入 `tags` 列
+- 投稿（`/api/submit`）与后台编辑（`/admin/edit`）都会重新提取标签
+- 前端点位卡片把 tags 渲染为 `#` 前缀的简约 chip（`.tag-chip`，浅色圆角胶囊）
+- 投稿弹窗描述框 placeholder 提示可用 `#标签`
+
+### 二、静态资源入库，投稿数据保持 ignore
+
+- 审计确认：css/js/字体/地图与分类图片等静态资源全部已入库（originals/thumbs 之外无 ignore）
+- 补齐缺失的 `static/originals/.gitkeep`、`static/thumbs/.gitkeep` 并入库（投稿数据仍被 ignore）
+- `.gitignore` 补充注释明确：仅忽略投稿数据（上传图片）
+
+### 三、网页图标
+
+- 三个模板（index / admin_login / admin_dashboard）均添加 `<link rel="icon">` → `static/images/mice/莱恩.png`
+
+### 四、拒绝投稿可注明原因
+
+- `/admin/reject/<id>` 接受可选 `reason` 表单字段，写入"未通过审核"邮件（`send_submitter_email` 增加 `reason` 参数）
+- 后台「拒绝」按钮先弹窗询问拒绝原因（可留空），随请求提交
+
+### 五、验证
+
+- 投稿含 `#果盘 #墙角 #果盘` → tags 存为 `果盘 墙角`（去重）
+- 后台编辑描述后 tags 同步更新；拒绝邮件正文在有/无原因两种情况下均正确
+- `/admin/reject` 带 reason 实测返回成功；favicon 路由 200
