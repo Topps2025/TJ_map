@@ -74,7 +74,7 @@ L1_CATEGORY_INFO = {
     "炸药桶点位": {
         "description": (
             "猫鼠元年11月17日，老祖"
-            "[秦菌啊](https://space.bilibili.com/33340245)"
+            "[秦菌啊](https://space.bilibili.com/33340245)的成名作"
             "[震惊一时的猫和老鼠打破传统的救人方式——几何桶](https://www.bilibili.com/video/BV1NJ411S7XE)"
             "发布，炸药桶救人的时代，开始了......此后，炸药桶能被推动、莱恩的问世"
             "推动了社区玩家们开发了各种各样充满想象力的救人方法，"
