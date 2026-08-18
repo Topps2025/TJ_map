@@ -64,17 +64,19 @@ L1_CATEGORY_INFO = {
     "挂机果盘点位": {
         "description": (
             "2025年11月13日，在墙缝期被猫玩家视为心头肉的冰桶不再能阻挡果盘。"
-            "自此，挂机果盘横空出世，其中摸鱼酵母为当时的点位作了巨大贡献，"
-            "详见（https://space.bilibili.com/34094591/lists/5683355?type=season）"
+            "自此，挂机果盘横空出世，其中"
+            "[摸鱼酵母](https://space.bilibili.com/34094591/lists/5683355?type=season)"
+            "为当时的点位作了巨大贡献，"
+            "[详见](https://space.bilibili.com/34094591/lists/5683355?type=season)。"
         ),
         "tips": [],
     },
     "炸药桶点位": {
         "description": (
-            "猫鼠元年11月17日，老祖“秦菌啊”（https://space.bilibili.com/33340245）"
-            "震惊一时的猫和老鼠打破传统的救人方式——几何桶"
-            "（https://www.bilibili.com/video/BV1NJ411S7XE）发布，"
-            "炸药桶救人的时代，开始了......此后，炸药桶能被推动、莱恩的问世"
+            "猫鼠元年11月17日，老祖"
+            "[秦菌啊](https://space.bilibili.com/33340245)"
+            "[震惊一时的猫和老鼠打破传统的救人方式——几何桶](https://www.bilibili.com/video/BV1NJ411S7XE)"
+            "发布，炸药桶救人的时代，开始了......此后，炸药桶能被推动、莱恩的问世"
             "推动了社区玩家们开发了各种各样充满想象力的救人方法，"
             "再一次感谢各位猫鼠科学家......"
         ),
@@ -84,9 +86,9 @@ L1_CATEGORY_INFO = {
         "description": (
             "众所周知，单点操作键时投出的道具轨迹是固定的（当然要排除自动瞄准的干扰），"
             "这是否意味着我们可以通过记住点位来打出一些出其不意的效果（视野外针对火箭位置盲投），"
-            "拿下本该稳赢的对局（站在远处把墙砸开）"
-            "https://www.bilibili.com/video/BV1ZxyFB6EQ2/?spm_id_from=333.1387.upload.video_card.click "
-            "实用性尚待考证，故称之为实验性点位，希望大家多多开发、多多投稿"
+            "拿下本该稳赢的对局（"
+            "[站在远处把墙砸开](https://www.bilibili.com/video/BV1ZxyFB6EQ2/?spm_id_from=333.1387.upload.video_card.click)"
+            "）。实用性尚待考证，故称之为实验性点位，希望大家多多开发、多多投稿"
         ),
         "tips": [],
     },
