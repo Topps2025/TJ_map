@@ -1304,7 +1304,6 @@ button { font-family: inherit; cursor: pointer; }
 }
 .site-tile-icon { width: 30px; height: 30px; color: var(--wiki-primary); }
 .site-tile-name { font-size: 14px; font-weight: 600; color: var(--wiki-foreground); }
-.site-tile-desc { font-size: 11px; color: var(--wiki-muted-foreground); }
 
 .footer-list { list-style: none; }
 .footer-list li {
