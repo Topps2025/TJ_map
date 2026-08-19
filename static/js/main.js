@@ -660,6 +660,11 @@
         resetMapChecks(fMapList);
         fGroup.disabled = true;
         refreshCurrentData();   // 投稿完成后回拉当前页最新点位/预览
+        // 投稿成功后自动关闭弹窗，避免手动关闭；重开后仍会按当前层级预填分类/地图
+        setTimeout(() => {
+          closeSubmitModal();
+          toast('投稿成功！审核通过后将在此展示');
+        }, 800);
       } else {
         showMsg(msg, data.error || '提交失败', 'error');
       }
