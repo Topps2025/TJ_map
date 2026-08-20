@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex">
+  <title>审核后台 · 猫和老鼠点位</title>
+  <link rel="stylesheet" href="/static/css/style.css">
+</head>
+<body class="admin-body">
+
+<header class="site-header">
+  <div class="header-inner">
+    <h1 class="logo">点位审核后台</h1>
+    <button class="btn-ghost" id="logoutBtn">退出登录</button>
+  </div>
+</header>
+
+<main class="container">
+  <nav class="admin-tabs">
+    <button class="chip active" data-status="pending">待审核</button>
+    <button class="chip" data-status="approved">已审核</button>
+    <button class="chip" data-status="bulk">批量上传</button>
+  </nav>
+
+  <!-- 列表视图 -->
+  <section id="listPanel">
+    <div class="list-toolbar">
+      <div class="layer-label" id="listLabel">待审核条目</div>
+      <button class="btn-ghost" id="approveAllBtn" hidden>全部通过</button>
+    </div>
+    <div class="admin-list" id="adminList">
+      <div class="loading-text">加载中...</div>
+    </div>
+  </section>
+
+  <!-- 批量上传 -->
+  <section id="bulkPanel" hidden>
+    <div class="layer-label">批量上传点位</div>
+    <form id="bulkForm" enctype="multipart/form-data" novalidate>
+      <div class="form-group">
+        <label>分类</label>
+        <select id="bCat" required><option value="">请选择</option></select>
+      </div>
+      <div class="form-group">
+        <label>地图主题</label>
+        <select id="bGroup" required disabled><option value="">先选分类</option></select>
+      </div>
+      <div class="form-group">
+        <label>具体地图</label>
+        <select id="bMap" required disabled><option value="">先选主题</option></select>
+      </div>
+      <div class="form-group">
+        <label>图片（可多选，每张单独填标题，上传后直接发布）</label>
+        <div class="file-drop" id="bDrop">
+          <input type="file" id="bFiles" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp" multiple required>
+          <div class="file-hint" id="bHint">点击或拖拽多张图片到这里</div>
+        </div>
+        <div class="file-list" id="bFileList"></div>
+      </div>
+      <div class="form-msg" id="bMsg" hidden></div>
+      <button type="submit" class="btn-primary" id="bSubmitBtn">上传并直接发布</button>
+    </form>
+  </section>
+</main>
+
+<div class="modal-mask" id="lightbox" hidden>
+  <div class="lightbox glass">
+    <button class="modal-close" id="closeLightbox" aria-label="关闭">✕</button>
+    <img id="lbImg" src="" alt="原图预览">
+  </div>
+</div>
+
+<script>
+let currentStatus = 'pending';
+let pickedFiles = [];
+
+const $ = (s) => document.querySelector(s);
+const listEl = $('#adminList');
+const labelEl = $('#listLabel');
+const approveAllBtn = $('#approveAllBtn');
+const listPanel = $('#listPanel');
+const bulkPanel = $('#bulkPanel');
+
+function esc(s) {
+  const d = document.createElement('div');
+  d.textContent = s == null ? '' : String(s);
+  return d.innerHTML;
+}
+
+function showMsg(el, text, type) {
+  el.textContent = text;
+  el.className = 'form-msg ' + (type || '');
+  el.hidden = false;
+}
+
+async function getJSON(url) {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error('HTTP ' + res.status);
+  const data = await res.json();
+  if (!data.ok) throw new Error(data.error || '请求失败');
+  return data.data;
+}
+
+async function loadList(status) {
+  currentStatus = status;
+  document.querySelectorAll('.admin-tabs .chip').forEach(b =>
+    b.classList.toggle('active', b.dataset.status === status));
+
+  if (status === 'bulk') {
+    listPanel.hidden = true;
+    bulkPanel.hidden = false;
+    approveAllBtn.hidden = true;
+    if (!$('#bCat').options.length) await initBulkSelects();
+    return;
+  }
+  bulkPanel.hidden = true;
+  listPanel.hidden = false;
+  approveAllBtn.hidden = status !== 'pending';
+
+  listEl.innerHTML = '<div class="loading-text">加载中...</div>';
+  labelEl.textContent = status === 'pending' ? '待审核条目' : '已审核条目';
+
+  const res = await fetch('/admin/pending?status=' + status);
+  if (res.status === 401) { location.href = '/admin'; return; }
+  const data = await res.json();
+  if (!data.ok) { listEl.innerHTML = '<div class="loading-text">加载失败</div>'; return; }
+
+  const rows = data.data;
+  if (!rows.length) {
+    listEl.innerHTML = '<div class="empty">暂无记录</div>';
+    return;
+  }
+  listEl.innerHTML = rows.map(r => `
+    <div class="admin-card glass" data-id="${r.id}">
+      <img class="admin-thumb" src="${esc(r.thumb_url)}" alt="缩略图" loading="lazy"
+           onclick="openLb('${esc(r.original_url)}')">
+      <div class="admin-info">
+        <div class="admin-title">${esc(r.title)}</div>
+        <div class="admin-meta">${esc(r.category_l1)} · ${esc(r.map_group_l2)} · ${esc(r.map_name_l3)}</div>
+        <div class="admin-meta">投稿时间：${esc(r.created_at)}</div>
+        ${r.submitter_email ? `<div class="admin-meta">邮箱：${esc(r.submitter_email)}</div>` : ''}
+      </div>
+      ${status === 'pending' ? `
+      <div class="admin-actions">
+        <button class="btn-ok" onclick="act(${r.id},'approve')">通过</button>
+        <button class="btn-no" onclick="act(${r.id},'reject')">拒绝</button>
+      </div>` : ''}
+    </div>`).join('');
+}
+
+async function act(id, action) {
+  const res = await fetch('/admin/' + action + '/' + id, { method: 'POST' });
+  const data = await res.json();
+  if (!data.ok) { alert(data.error || '操作失败'); return; }
+  loadList(currentStatus);
+}
+
+$('#logoutBtn').addEventListener('click', async () => {
+  await fetch('/admin/logout', { method: 'POST' });
+  location.href = '/admin';
+});
+
+document.querySelectorAll('.admin-tabs .chip').forEach(b =>
+  b.addEventListener('click', () => loadList(b.dataset.status)));
+
+approveAllBtn.addEventListener('click', async () => {
+  if (!confirm('确定全部通过当前所有待审核条目？')) return;
+  const res = await fetch('/admin/approve_all', { method: 'POST' });
+  const data = await res.json();
+  if (!data.ok) { alert(data.error || '操作失败'); return; }
+  loadList(currentStatus);
+});
+
+function openLb(src) {
+  $('#lbImg').src = src;
+  $('#lightbox').hidden = false;
+}
+$('#closeLightbox').addEventListener('click', () => { $('#lightbox').hidden = true; });
+$('#lightbox').addEventListener('click', (e) => { if (e.target === $('#lightbox')) $('#lightbox').hidden = true; });
+
+/* ---------------- 批量上传 ---------------- */
+
+async function initBulkSelects() {
+  try {
+    const cats = await getJSON('/api/categories');
+    $('#bCat').innerHTML = '<option value="">请选择</option>' +
+      cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+  } catch (e) {
+    $('#bCat').innerHTML = '<option value="">加载失败</option>';
+  }
+}
+
+$('#bCat').addEventListener('change', async () => {
+  const g = $('#bGroup');
+  g.disabled = !$('#bCat').value;
+  $('#bMap').disabled = true;
+  $('#bMap').innerHTML = '<option value="">先选主题</option>';
+  if (!$('#bCat').value) { g.innerHTML = '<option value="">先选分类</option>'; return; }
+  g.innerHTML = '<option value="">加载中...</option>';
+  try {
+    const groups = await getJSON('/api/groups?l1=' + encodeURIComponent($('#bCat').value));
+    g.innerHTML = '<option value="">请选择</option>' +
+      groups.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');
+  } catch (e) { g.innerHTML = '<option value="">加载失败</option>'; }
+});
+
+$('#bGroup').addEventListener('change', async () => {
+  const m = $('#bMap');
+  m.disabled = !$('#bGroup').value;
+  if (!$('#bGroup').value) { m.innerHTML = '<option value="">先选主题</option>'; return; }
+  m.innerHTML = '<option value="">加载中...</option>';
+  try {
+    const maps = await getJSON('/api/maps?l1=' + encodeURIComponent($('#bCat').value) +
+      '&l2=' + encodeURIComponent($('#bGroup').value));
+    m.innerHTML = '<option value="">请选择</option>' +
+      maps.map(x => `<option value="${esc(x.name)}">${esc(x.name)}</option>`).join('');
+  } catch (e) { m.innerHTML = '<option value="">加载失败</option>'; }
+});
+
+const bFiles = $('#bFiles');
+const bDrop = $('#bDrop');
+const bFileList = $('#bFileList');
+
+bFiles.addEventListener('change', () => {
+  pickedFiles = Array.from(bFiles.files);
+  renderFileList();
+});
+
+['dragover', 'drop'].forEach(evt => bDrop.addEventListener(evt, (e) => {
+  e.preventDefault();
+  bDrop.classList.toggle('dragover', evt === 'dragover');
+}));
+bDrop.addEventListener('drop', (e) => {
+  const files = e.dataTransfer.files && Array.from(e.dataTransfer.files);
+  if (files && files.length) {
+    bFiles.files = e.dataTransfer.files;
+    pickedFiles = files;
+    renderFileList();
+  }
+});
+
+function renderFileList() {
+  if (!pickedFiles.length) { bFileList.innerHTML = ''; return; }
+  const defaultTitle = $('#bMap').value || '';
+  bFileList.innerHTML = pickedFiles.map((f, i) => `
+    <div class="file-row">
+      <img class="file-row-thumb" src="${URL.createObjectURL(f)}" alt="预览">
+      <div class="file-row-info">
+        <div class="file-row-name">${esc(f.name)}</div>
+        <input type="text" class="file-row-title" maxlength="60" placeholder="点位描述"
+               value="${esc(defaultTitle)}">
+      </div>
+      <button type="button" class="btn-ghost" onclick="removeFile(${i})">移除</button>
+    </div>`).join('');
+}
+
+function removeFile(i) {
+  pickedFiles.splice(i, 1);
+  bFiles.value = '';
+  renderFileList();
+}
+
+$('#bulkForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const msg = $('#bMsg');
+  msg.hidden = true;
+
+  if (!$('#bCat').value || !$('#bGroup').value || !$('#bMap').value) {
+    showMsg(msg, '请完整选择分类、主题和地图', 'error');
+    return;
+  }
+  if (!pickedFiles.length) {
+    showMsg(msg, '请选择要上传的图片', 'error');
+    return;
+  }
+  const titles = Array.from(document.querySelectorAll('.file-row-title')).map(t => t.value.trim());
+  if (titles.some(t => !t)) {
+    showMsg(msg, '请为每张图片填写标题', 'error');
+    return;
+  }
+
+  const fd = new FormData();
+  fd.append('category_l1', $('#bCat').value);
+  fd.append('map_group_l2', $('#bGroup').value);
+  fd.append('map_name_l3', $('#bMap').value);
+  pickedFiles.forEach(f => fd.append('files', f));
+  titles.forEach(t => fd.append('titles', t));
+
+  const btn = $('#bSubmitBtn');
+  btn.disabled = true;
+  btn.textContent = '上传中...';
+  try {
+    const res = await fetch('/admin/bulk_upload', { method: 'POST', body: fd });
+    const data = await res.json();
+    if (data.ok) {
+      const fails = data.results.filter(r => !r.ok);
+      let text = '上传成功，已直接发布 ' + data.inserted + ' 条';
+      if (fails.length) text += '，' + fails.length + ' 条失败';
+      showMsg(msg, text, 'ok');
+      pickedFiles = [];
+      bFiles.value = '';
+      renderFileList();
+    } else {
+      showMsg(msg, data.error || '上传失败', 'error');
+    }
+  } catch (err) {
+    showMsg(msg, '网络错误，请重试', 'error');
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '上传并直接发布';
+  }
+});
+
+loadList('pending');
+</script>
+</body>
+</html>
