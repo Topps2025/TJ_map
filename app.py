@@ -43,32 +43,77 @@ app.config["MAX_CONTENT_LENGTH"] = config.MAX_UPLOAD_SIZE
 L1_CATEGORIES = [
     "挂机果盘点位",
     "炸药桶点位",
-    "投掷物点投点位",
-    "罗宾汉泰菲种树点位",
+    "实验性点位",
+    "藤蔓点位",
+    "贯穿线点位",
 ]
 
 # 分类配图（图片取自 tjwiki 仓库 public/images/mice/）
 L1_CATEGORY_ICONS = {
     "挂机果盘点位": "/static/images/mice/恶魔泰菲.png",
     "炸药桶点位": "/static/images/mice/莱恩.png",
-    "投掷物点投点位": "/static/images/mice/航海士杰瑞.png",
-    "罗宾汉泰菲种树点位": "/static/images/mice/罗宾汉泰菲.png",
+    "实验性点位": "/static/images/mice/航海士杰瑞.png",
+    "藤蔓点位": "/static/images/mice/罗宾汉泰菲.png",
+    "贯穿线点位": "/static/images/mice/梦游杰瑞.png",
 }
 
 # 分类介绍页内容（点击分类后先展示介绍，再进入地图选择）
-# 说明：介绍文字留白，由站点作者自行编写。
+# 说明：介绍文字由站点作者编写；description 支持 [文字](链接) 语法与裸链接（前端自动转为可点击超链接）。
 # 结构：{"description": 介绍段落, "tips": [要点列表]}，字段为空则页面不展示对应区域。
 L1_CATEGORY_INFO = {
-    "挂机果盘点位": {"description": "", "tips": []},
-    "炸药桶点位": {"description": "", "tips": []},
-    "投掷物点投点位": {"description": "", "tips": []},
-    "罗宾汉泰菲种树点位": {"description": "", "tips": []},
+    "挂机果盘点位": {
+        "description": (
+            "2025年11月13日，在墙缝期被猫玩家视为心头肉的冰桶不再能阻挡果盘。"
+            "自此，挂机果盘横空出世，其中"
+            "[摸鱼酵母](https://space.bilibili.com/34094591/lists/5683355?type=season)"
+            "为当时的点位作了巨大贡献，"
+            "[详见](https://space.bilibili.com/34094591/lists/5683355?type=season)。"
+        ),
+        "tips": [],
+    },
+    "炸药桶点位": {
+        "description": (
+            "猫鼠元年11月17日，老祖"
+            "[秦菌啊](https://space.bilibili.com/33340245)的成名作"
+            "[震惊一时的猫和老鼠打破传统的救人方式——几何桶](https://www.bilibili.com/video/BV1NJ411S7XE)"
+            "发布，炸药桶救人的时代，开始了......此后，炸药桶能被推动、莱恩的问世"
+            "推动了社区玩家们开发了各种各样充满想象力的救人方法，"
+            "再一次感谢各位猫鼠科学家......"
+        ),
+        "tips": [],
+    },
+    "实验性点位": {
+        "description": (
+            "众所周知，单点操作键时投出的道具轨迹是固定的（当然要排除自动瞄准的干扰），"
+            "这是否意味着我们可以通过记住点位来打出一些出其不意的效果（视野外针对火箭位置盲投），"
+            "拿下本该稳赢的对局（"
+            "[站在远处把墙砸开](https://www.bilibili.com/video/BV1ZxyFB6EQ2/?spm_id_from=333.1387.upload.video_card.click)"
+            "）。实用性尚待考证，故称之为实验性点位，希望大家多多开发、多多投稿"
+        ),
+        "tips": [],
+    },
+    "藤蔓点位": {"description": "", "tips": []},
+    "贯穿线点位": {
+        "description": (
+            "[亦风](https://space.bilibili.com/37845758)？！什么风把猫鼠研究生吹来了？"
+            "[亦风](https://space.bilibili.com/37845758)，作为庆典季的老鼠皇，"
+            "他并没有躺在荣誉簿里睡大觉，他发明了许多非人类的打法，诸如穿墙果盘、蛋糕花洒破墙。"
+            "梦游杰瑞贯穿线，就出自于他的神奇大脑。"
+            "想玩好贯穿线不仅要记住位置，还要瞅准鞭炮爆炸时机、把控技能释放，"
+            "需要大家结合视频和实战练习，所以也建议各位投稿者在投稿时贴出视频链接，"
+            "单单看图片是很难在实战中用出来的哦。"
+        ),
+        "tips": [],
+    },
 }
 
 # 分类改名迁移：旧分类 -> 新分类（几何桶/隔墙炸 合并为 炸药桶）
 L1_CATEGORY_MIGRATE = {
     "几何桶点位": "炸药桶点位",
     "莱恩隔墙炸点位": "炸药桶点位",
+    "投掷物点投点位": "实验性点位",
+    "投掷物点投(实验）": "实验性点位",
+    "罗宾汉泰菲种树点位": "藤蔓点位",
 }
 
 # 常规地图（按主题族分组）
@@ -174,7 +219,7 @@ def get_db():
 def init_db():
     conn = get_db()
     conn.executescript(DB_SCHEMA)
-    # 旧分类名迁移（几何桶/隔墙炸 -> 炸药桶）
+    # 旧分类名迁移（几何桶/隔墙炸 -> 炸药桶；点投/种树 -> 新名）
     for old, new in L1_CATEGORY_MIGRATE.items():
         conn.execute("UPDATE points SET category_l1 = ? WHERE category_l1 = ?", (new, old))
     # 新字段迁移：补列 + 旧投稿标题统一为 untitle（原标题转入描述）

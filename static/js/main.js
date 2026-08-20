@@ -76,21 +76,31 @@
 
   function renderView(st) {
     if (!st) st = { v: 'cats' };
+    if (st.v === 'submit') return;   // 投稿弹窗标记状态：不渲染，仅用于返回键关闭弹窗
     if (st.v === 'maps') showMaps(st.l1);
     else if (st.v === 'groups') showGroups(st.l1, st.l2);
     else if (st.v === 'points') showPoints(st);
     else showCats();
   }
 
-  window.addEventListener('popstate', () => renderView(history.state));
+  window.addEventListener('popstate', () => {
+    // 投稿弹窗打开时按手机返回键：仅关闭弹窗，不改变当前浏览层级
+    if (!submitModal.hidden) {
+      closeSubmitModal();
+      return;
+    }
+    renderView(history.state);
+  });
 
   /* ---------------- 视图渲染 ---------------- */
 
   function showCats() {
+    state.l1 = '';
     layer1.hidden = false;
     layer2.hidden = true;
     layer3.hidden = true;
     pointsArea.hidden = true;
+    fabSubmit.hidden = true;
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -98,8 +108,29 @@
     $('#introIcon').src = info.icon || '';
     $('#introIcon').alt = info.name || '';
     $('#introTitle').textContent = info.name || '';
-    $('#introDesc').textContent = info.description || '';
+    $('#introDesc').innerHTML = linkifyText(info.description);
     $('#introTips').innerHTML = (info.tips || []).map(t => `<li>${esc(t)}</li>`).join('');
+  }
+
+  // 分类介绍文案：转义后把 [文字](链接) 与裸 http(s) 链接渲染为可点击超链接
+  function linkifyText(text) {
+    if (!text) return '';
+    let html = esc(text);
+    const anchors = [];
+    // 1) 显式链接：[文字](https://...)
+    html = html.replace(/\[([^\]]+)\]\((https?:\/\/[^)\s]+)\)/g, (m, t, u) => {
+      const token = '\u0000' + anchors.length + '\u0000';
+      anchors.push(`<a class="intro-link" href="${u}" target="_blank" rel="noopener noreferrer">${t}</a>`);
+      return token;
+    });
+    // 2) 裸链接自动转超链接（排除中文全角括号等结尾符号）
+    html = html.replace(/(https?:\/\/[^\s<>"'（）()]+)/g, (m, u) => {
+      const token = '\u0000' + anchors.length + '\u0000';
+      anchors.push(`<a class="intro-link" href="${u}" target="_blank" rel="noopener noreferrer">${u}</a>`);
+      return token;
+    });
+    // 3) 还原锚点
+    return html.replace(/\u0000(\d+)\u0000/g, (m, i) => anchors[+i] || '');
   }
 
   async function showMaps(l1) {
@@ -111,6 +142,7 @@
     layer2.hidden = false;
     layer3.hidden = true;
     pointsArea.hidden = true;
+    fabSubmit.hidden = false;
     renderIntro(state.cats.find(c => c.name === l1) || {});
     groupChips.innerHTML = '<div class="loading-text">加载主题中...</div>';
     window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -157,6 +189,7 @@
     layer2.hidden = true;
     layer3.hidden = false;
     pointsArea.hidden = true;
+    fabSubmit.hidden = false;
     mapChips.innerHTML = maps.map((m, i) => `
       <button class="map-card animate-fadeInUp grid-item-${(i % 8) + 1}" data-name="${esc(m.name)}">
         <span class="map-card-thumb">
@@ -196,6 +229,7 @@
     layer2.hidden = true;
     layer3.hidden = true;
     pointsArea.hidden = false;
+    fabSubmit.hidden = false;
     pointsTitle.textContent = `${st.l1} · ${st.l2} · ${st.l3}`;
     const info = (state.mapsInfo || []).find(m => m.name === st.l3) || {};
     // 地图整图横幅（无整图则不显示）
@@ -243,7 +277,7 @@
 
   function renderPoints(points) {
     if (!points.length) {
-      pointsGrid.innerHTML = '<div class="empty">该地图暂无已审核点位，点击上方「投稿」按钮投稿</div>';
+      pointsGrid.innerHTML = '<div class="empty">该地图暂无已审核点位，点击右下角「投稿」卡片投稿</div>';
       return;
     }
     pointsGrid.innerHTML = points.map((p, i) => {
@@ -272,6 +306,18 @@
       card.addEventListener('click', () => openLightbox(points, +card.dataset.point)));
   }
 
+  /* ---------------- 弹层滚动锁定（移动端点投稿/看原图时页面不乱滚） ---------------- */
+
+  function lockBodyScroll(lock) {
+    document.body.style.overflow = lock ? 'hidden' : '';
+  }
+
+  // 弹层打开后还原滚动位置：部分移动浏览器会在遮罩显示时滚动页面（如把视口“对焦”到页脚的固定按钮）
+  function restoreScroll(prevScroll) {
+    const cur = window.scrollY || document.documentElement.scrollTop || 0;
+    if (cur !== prevScroll) window.scrollTo(0, prevScroll);
+  }
+
   /* ---------------- 原图灯箱（多图翻页） ---------------- */
 
   let lbItems = [];   // [{ src, title, desc }]
@@ -287,7 +333,15 @@
     lbItems = flat;
     lbIndex = Math.max(0, Math.min(firstIdx[pointIdx] ?? 0, flat.length - 1));
     renderLb();
+    const prevScroll = window.scrollY || document.documentElement.scrollTop || 0;
     $('#lightbox').hidden = false;
+    lockBodyScroll(true);
+    restoreScroll(prevScroll);
+  }
+
+  function closeLightbox() {
+    $('#lightbox').hidden = true;
+    lockBodyScroll(false);
   }
 
   function renderLb() {
@@ -311,23 +365,25 @@
     renderLb();
   }
 
-  $('#closeLightbox').addEventListener('click', () => { $('#lightbox').hidden = true; });
+  $('#closeLightbox').addEventListener('click', closeLightbox);
   $('#lbPrev').addEventListener('click', (e) => { e.stopPropagation(); lbStep(-1); });
   $('#lbNext').addEventListener('click', (e) => { e.stopPropagation(); lbStep(1); });
   $('#lightbox').addEventListener('click', (e) => {
-    if (e.target === $('#lightbox')) $('#lightbox').hidden = true;
+    if (e.target === $('#lightbox')) closeLightbox();
   });
   document.addEventListener('keydown', (e) => {
     if ($('#lightbox').hidden) return;
     if (e.key === 'ArrowLeft') lbStep(-1);
     else if (e.key === 'ArrowRight') lbStep(1);
-    else if (e.key === 'Escape') $('#lightbox').hidden = true;
+    else if (e.key === 'Escape') closeLightbox();
   });
 
   /* ---------------- 投稿弹窗 ---------------- */
 
   const submitModal = $('#submitModal');
   const fCat = $('#fCat'), fGroup = $('#fGroup'), fMapList = $('#fMapList');
+  const fabSubmit = $('#fabSubmit');
+  let submitPrevState = null;   // 打开投稿弹窗前的视图状态（用于返回键关闭清理）
 
   function renderMapChecks(maps, container, checked) {
     container.innerHTML = maps.map((m) => `
@@ -344,30 +400,18 @@
     container.innerHTML = '<p class="form-hint">请先选择地图主题</p>';
   }
 
-  $('#navSubmit').addEventListener('click', openSubmitModal);
-
-  async function openSubmitModal() {
-    if (submitModal.hidden) {
-      $('#formMsg').hidden = true;
-      $('#formMsg').className = 'form-msg';
-      // 载入分类下拉
-      try {
-        const cats = await getJSON('/api/categories');
-        fCat.innerHTML = '<option value="">请选择</option>' +
-          cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
-      } catch (e) { toast('分类加载失败'); return; }
-      fGroup.innerHTML = '<option value="">先选分类</option>';
-      resetMapChecks(fMapList);
-      fGroup.disabled = true;
-    }
-    submitModal.hidden = !submitModal.hidden;
+  // 分类下拉只加载一次（弹窗内选项不变）
+  let catsLoaded = false;
+  async function ensureCatsLoaded() {
+    if (catsLoaded) return;
+    const cats = await getJSON('/api/categories');
+    fCat.innerHTML = '<option value="">请选择</option>' +
+      cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+    catsLoaded = true;
   }
-  $('#closeSubmit').addEventListener('click', () => { submitModal.hidden = true; });
-  submitModal.addEventListener('click', (e) => {
-    if (e.target === submitModal) submitModal.hidden = true;
-  });
 
-  fCat.addEventListener('change', async () => {
+  // 按当前分类填充地图主题下拉
+  async function populateGroups() {
     fGroup.disabled = !fCat.value;
     resetMapChecks(fMapList);
     if (!fCat.value) { fGroup.innerHTML = '<option value="">先选分类</option>'; return; }
@@ -377,9 +421,10 @@
       fGroup.innerHTML = '<option value="">请选择</option>' +
         groups.map(g => `<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('');
     } catch (e) { toast('主题加载失败'); }
-  });
+  }
 
-  fGroup.addEventListener('change', async () => {
+  // 按当前分类+主题填充具体地图勾选列表
+  async function populateMaps() {
     if (!fGroup.value) { resetMapChecks(fMapList); return; }
     fMapList.innerHTML = '<p class="form-hint">加载中...</p>';
     try {
@@ -387,7 +432,62 @@
         '&l2=' + encodeURIComponent(fGroup.value));
       renderMapChecks(maps, fMapList, new Set());
     } catch (e) { toast('地图加载失败'); }
+  }
+
+  // 打开投稿弹窗并预填字段：prefill = {l1, l2, l3}
+  async function openSubmitModal(prefill) {
+    prefill = prefill || {};
+    const prevScroll = window.scrollY || document.documentElement.scrollTop || 0;
+    submitModal.hidden = false;
+    lockBodyScroll(true);
+    restoreScroll(prevScroll);
+    $('#formMsg').hidden = true;
+    $('#formMsg').className = 'form-msg';
+    // 压入标记状态：手机端点开投稿后按返回键时，先关闭弹窗而不是退出页面
+    if (submitPrevState === null) {
+      submitPrevState = history.state || { v: 'cats' };
+      history.pushState({ v: 'submit' }, '');
+    }
+    try {
+      await ensureCatsLoaded();
+    } catch (e) { toast('分类加载失败'); return; }
+    if (prefill.l1) fCat.value = prefill.l1;
+    await populateGroups();
+    if (prefill.l2 && Array.from(fGroup.options).some(o => o.value === prefill.l2)) {
+      fGroup.value = prefill.l2;
+    }
+    await populateMaps();
+    if (prefill.l3) {
+      // 预勾选当前具体地图
+      Array.from(fMapList.querySelectorAll('input[type="checkbox"]')).forEach(cb => {
+        cb.checked = cb.value === prefill.l3;
+      });
+    }
+  }
+
+  // 关闭投稿弹窗（✕/遮罩/返回键共用），并清理返回键标记状态
+  function closeSubmitModal() {
+    submitModal.hidden = true;
+    lockBodyScroll(false);
+    if (submitPrevState !== null) {
+      history.replaceState(submitPrevState, '');
+      submitPrevState = null;
+    }
+  }
+
+  // 右下角投稿卡片：按当前浏览层级自动预填字段
+  fabSubmit.addEventListener('click', () => {
+    openSubmitModal({ l1: state.l1, l2: state.l2, l3: state.l3 });
   });
+  // 阻止移动端点击后浏览器把焦点滚到页脚附近（固定按钮在文档坐标里的位置），导致画面跳到网站说明/致谢
+  fabSubmit.addEventListener('mousedown', (e) => e.preventDefault());
+  $('#closeSubmit').addEventListener('click', closeSubmitModal);
+  submitModal.addEventListener('click', (e) => {
+    if (e.target === submitModal) closeSubmitModal();
+  });
+
+  fCat.addEventListener('change', populateGroups);
+  fGroup.addEventListener('change', populateMaps);
 
   // 图片多选预览 + 拖拽
   const fImage = $('#fImage');

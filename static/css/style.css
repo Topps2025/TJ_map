@@ -323,6 +323,13 @@ button { font-family: inherit; cursor: pointer; }
   color: #374151;
   margin-bottom: 16px;
 }
+.intro-desc .intro-link {
+  color: var(--wiki-primary);
+  text-decoration: none;
+  font-weight: 500;
+  word-break: break-all;
+}
+.intro-desc .intro-link:hover { text-decoration: underline; }
 .dark .intro-desc { color: #cbd5e1; }
 .intro-tips {
   list-style: none;
@@ -712,12 +719,20 @@ button { font-family: inherit; cursor: pointer; }
 
 .modal-mask {
   position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
   inset: 0;
+  width: 100%;
+  height: 100%;
   background: rgba(15, 23, 42, 0.55);
   display: flex;
   align-items: center;
   justify-content: center;
   padding: 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   z-index: 100;
   animation: fadeIn 0.2s ease;
 }
@@ -1175,6 +1190,36 @@ button { font-family: inherit; cursor: pointer; }
   text-align: center;
   opacity: 0.8;
 }
+
+/* ---------------- 右下角投稿卡片 ---------------- */
+
+.submit-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 90;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--wiki-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-display-stack);
+  box-shadow: 0 8px 20px rgba(37, 99, 235, 0.35);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+}
+.submit-fab svg { width: 18px; height: 18px; }
+.submit-fab:hover {
+  background: var(--wiki-primary-hover);
+  box-shadow: 0 10px 24px rgba(37, 99, 235, 0.45);
+}
+.submit-fab:active { transform: scale(0.96); }
+.submit-fab[hidden] { display: none; }
 
 /* ---------------- 响应式微调 ---------------- */
 
