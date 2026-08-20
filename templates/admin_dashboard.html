@@ -57,7 +57,11 @@
 <div class="modal-mask" id="lightbox" hidden>
   <div class="lightbox glass">
     <button class="modal-close" id="closeLightbox" aria-label="关闭">✕</button>
+    <button class="lb-nav lb-prev" id="lbPrev" aria-label="上一张">‹</button>
     <img id="lbImg" src="" alt="原图预览">
+    <button class="lb-nav lb-next" id="lbNext" aria-label="下一张">›</button>
+    <p id="lbTitle" class="lightbox-title"></p>
+    <p id="lbDesc" class="lightbox-desc" hidden></p>
   </div>
 </div>
 
@@ -163,8 +167,7 @@ async function loadList(status) {
     return `
     <div class="admin-card glass animate-fadeInUp grid-item-${(i % 8) + 1}" data-id="${r.id}">
       <div class="admin-thumb-wrap">
-        <img class="admin-thumb" src="${esc(r.thumb_url)}" alt="缩略图" loading="lazy"
-             onclick="openLb('${esc(r.original_url)}')">
+        <img class="admin-thumb" src="${esc(r.thumb_url)}" alt="缩略图" loading="lazy">
         ${imgCount > 1 ? `<span class="multi-badge">×${imgCount}</span>` : ''}
       </div>
       <div class="admin-info">
@@ -362,12 +365,73 @@ approveAllBtn.addEventListener('click', async () => {
   loadList(currentStatus);
 });
 
-function openLb(src) {
-  $('#lbImg').src = src;
-  $('#lightbox').hidden = false;
-}
-$('#closeLightbox').addEventListener('click', () => { $('#lightbox').hidden = true; });
-$('#lightbox').addEventListener('click', (e) => { if (e.target === $('#lightbox')) $('#lightbox').hidden = true; });
+/* ---------------- 看大图（点击卡片查看完整图，多图可左右翻页） ---------------- */
+
+  let lbItems = [];   // [{ src, title, desc }]
+  let lbIndex = 0;
+
+  function lockBodyScroll(lock) {
+    document.body.style.overflow = lock ? 'hidden' : '';
+  }
+
+  // 打开某条投稿的完整图查看器
+  function openLbFor(row) {
+    const imgs = (row.images && row.images.length) ? row.images : [{ original: row.original_url }];
+    lbItems = imgs.map(im => ({ src: im.original, title: row.title, desc: row.description || '' }));
+    lbIndex = 0;
+    renderLb();
+    $('#lightbox').hidden = false;
+    lockBodyScroll(true);
+  }
+
+  function renderLb() {
+    const item = lbItems[lbIndex] || { src: '', title: '', desc: '' };
+    $('#lbImg').src = item.src;
+    $('#lbTitle').textContent = lbItems.length > 1
+      ? `${item.title}（${lbIndex + 1}/${lbItems.length}）` : item.title;
+    const desc = $('#lbDesc');
+    if (item.desc) {
+      desc.textContent = item.desc;
+      desc.hidden = false;
+    } else {
+      desc.textContent = '';
+      desc.hidden = true;
+    }
+    $('#lbPrev').hidden = lbItems.length <= 1;
+    $('#lbNext').hidden = lbItems.length <= 1;
+  }
+
+  function lbStep(delta) {
+    lbIndex = (lbIndex + delta + lbItems.length) % lbItems.length;
+    renderLb();
+  }
+
+  function closeLb() {
+    $('#lightbox').hidden = true;
+    lockBodyScroll(false);
+  }
+
+  // 点击卡片任意位置（操作按钮除外）查看完整图
+  listEl.addEventListener('click', (e) => {
+    if (e.target.closest('button')) return;   // 编辑/通过/拒绝/删除按钮不触发
+    const card = e.target.closest('.admin-card');
+    if (!card) return;
+    const row = currentRows.find(r => r.id === Number(card.dataset.id));
+    if (row) openLbFor(row);
+  });
+
+  $('#closeLightbox').addEventListener('click', closeLb);
+  $('#lightbox').addEventListener('click', (e) => {
+    if (e.target === $('#lightbox')) closeLb();
+  });
+  $('#lbPrev').addEventListener('click', (e) => { e.stopPropagation(); lbStep(-1); });
+  $('#lbNext').addEventListener('click', (e) => { e.stopPropagation(); lbStep(1); });
+  document.addEventListener('keydown', (e) => {
+    if ($('#lightbox').hidden) return;
+    if (e.key === 'ArrowLeft') lbStep(-1);
+    else if (e.key === 'ArrowRight') lbStep(1);
+    else if (e.key === 'Escape') closeLb();
+  });
 
 loadList('pending');
 </script>
