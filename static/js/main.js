@@ -9,8 +9,9 @@
   const $ = (s) => document.querySelector(s);
   const $$ = (s) => Array.from(document.querySelectorAll(s));
 
-  const state = { l1: '', l2: '', l3: '', mapsInfo: [] };
+  const state = { l1: '', l2: '', l3: '', mapsInfo: [], cats: [] };
 
+  const layer1 = $('#layer1');
   const layer2 = $('#layer2');
   const layer3 = $('#layer3');
   const pointsArea = $('#pointsArea');
@@ -49,97 +50,182 @@
   async function loadCategories() {
     try {
       const cats = await getJSON('/api/categories');
-      catTabs.innerHTML = cats.map((c, i) =>
-        `<button class="cat-tab" data-cat="${esc(c)}">${esc(c)}</button>`).join('');
-      $$('.cat-tab').forEach(btn =>
-        btn.addEventListener('click', () => selectCategory(btn.dataset.cat)));
+      state.cats = cats;
+      catTabs.innerHTML = cats.map((c, i) => `
+        <button class="cat-card animate-fadeInUp grid-item-${(i % 8) + 1}" data-cat="${esc(c.name)}">
+          <span class="cat-card-thumb">
+            ${c.icon ? `<img src="${esc(c.icon)}" alt="${esc(c.name)}" loading="lazy">` : '<span class="cat-card-placeholder"></span>'}
+          </span>
+          <span class="cat-card-name">${esc(c.name)}</span>
+        </button>`).join('');
+      $$('.cat-card').forEach(btn =>
+        btn.addEventListener('click', () => {
+          pushView({ v: 'maps', l1: btn.dataset.cat });
+          showMaps(btn.dataset.cat);
+        }));
     } catch (e) {
       catTabs.innerHTML = '<div class="empty">分类加载失败，请刷新</div>';
     }
   }
 
-  async function selectCategory(cat) {
-    state.l1 = cat;
-    state.l2 = '';
-    state.l3 = '';
-    $$('.cat-tab').forEach(b => b.classList.toggle('active', b.dataset.cat === cat));
+  /* ---------------- 视图状态（支持浏览器前进/后退） ---------------- */
+
+  function pushView(st) {
+    history.pushState(st, '');
+  }
+
+  function renderView(st) {
+    if (!st) st = { v: 'cats' };
+    if (st.v === 'maps') showMaps(st.l1);
+    else if (st.v === 'groups') showGroups(st.l1, st.l2);
+    else if (st.v === 'points') showPoints(st);
+    else showCats();
+  }
+
+  window.addEventListener('popstate', () => renderView(history.state));
+
+  /* ---------------- 视图渲染 ---------------- */
+
+  function showCats() {
+    layer1.hidden = false;
+    layer2.hidden = true;
     layer3.hidden = true;
     pointsArea.hidden = true;
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  function renderIntro(info) {
+    $('#introIcon').src = info.icon || '';
+    $('#introIcon').alt = info.name || '';
+    $('#introTitle').textContent = info.name || '';
+    $('#introDesc').textContent = info.description || '';
+    $('#introTips').innerHTML = (info.tips || []).map(t => `<li>${esc(t)}</li>`).join('');
+  }
+
+  async function showMaps(l1) {
+    state.l1 = l1;
+    state.l2 = '';
+    state.l3 = '';
+    $$('.cat-card').forEach(b => b.classList.toggle('active', b.dataset.cat === l1));
+    layer1.hidden = true;
     layer2.hidden = false;
+    layer3.hidden = true;
+    pointsArea.hidden = true;
+    renderIntro(state.cats.find(c => c.name === l1) || {});
     groupChips.innerHTML = '<div class="loading-text">加载主题中...</div>';
+    window.scrollTo({ top: 0, behavior: 'smooth' });
     try {
-      const groups = await getJSON('/api/groups?l1=' + encodeURIComponent(cat));
-      groupChips.innerHTML = groups.map(g => `
-        <button class="map-card" data-name="${esc(g.name)}">
+      const groups = await getJSON('/api/groups?l1=' + encodeURIComponent(l1));
+      groupChips.innerHTML = groups.map((g, i) => `
+        <button class="map-card animate-fadeInUp grid-item-${(i % 8) + 1}" data-name="${esc(g.name)}">
           <span class="map-card-thumb">
             ${g.thumb ? `<img src="${esc(g.thumb)}" alt="${esc(g.name)}" loading="lazy">` : '<span class="map-card-placeholder"></span>'}
           </span>
           <span class="map-card-name">${esc(g.name)}</span>
         </button>`).join('');
       $$('#groupChips .map-card').forEach(btn =>
-        btn.addEventListener('click', () => selectGroup(btn.dataset.name)));
+        btn.addEventListener('click', () => openGroup(l1, btn.dataset.name)));
     } catch (e) {
       groupChips.innerHTML = '<div class="empty">主题加载失败</div>';
     }
   }
 
-  /* ---------------- 第二层：地图主题 ---------------- */
+  /* ---------------- 地图大类 -> 具体地图 / 点位 ---------------- */
 
-  async function selectGroup(group) {
-    state.l2 = group;
-    state.l3 = '';
-    $$('#groupChips .map-card').forEach(b => b.classList.toggle('active', b.dataset.name === group));
-    pointsArea.hidden = true;
-    layer3.hidden = false;
-    mapChips.innerHTML = '<div class="loading-text">加载地图中...</div>';
+  async function openGroup(l1, l2) {
+    state.l1 = l1;
+    state.l2 = l2;
     try {
-      const maps = await getJSON('/api/maps?l1=' + encodeURIComponent(state.l1) +
-        '&l2=' + encodeURIComponent(group));
-      mapChips.innerHTML = maps.map(m => `
-        <button class="map-card" data-name="${esc(m.name)}">
-          <span class="map-card-thumb">
-            ${m.thumb ? `<img src="${esc(m.thumb)}" alt="${esc(m.name)}" loading="lazy">` : '<span class="map-card-placeholder"></span>'}
-          </span>
-          <span class="map-card-name">${esc(m.name)}</span>
-        </button>`).join('');
+      const maps = await getJSON('/api/maps?l1=' + encodeURIComponent(l1) +
+        '&l2=' + encodeURIComponent(l2));
       state.mapsInfo = maps;
-      $$('#mapChips .map-card').forEach(btn =>
-        btn.addEventListener('click', () => selectMap(btn.dataset.name)));
+      if (maps.length === 1) {
+        // 单地图大类：该地图即具体地图，直接进入点位，跳过地图选择
+        pushView({ v: 'points', l1, l2, l3: maps[0].name });
+        showPoints({ v: 'points', l1, l2, l3: maps[0].name });
+        return;
+      }
+      pushView({ v: 'groups', l1, l2 });
+      showGroupsView(l1, l2, maps);
+    } catch (e) {
+      toast('地图加载失败');
+    }
+  }
+
+  function showGroupsView(l1, l2, maps) {
+    layer1.hidden = true;
+    layer2.hidden = true;
+    layer3.hidden = false;
+    pointsArea.hidden = true;
+    mapChips.innerHTML = maps.map((m, i) => `
+      <button class="map-card animate-fadeInUp grid-item-${(i % 8) + 1}" data-name="${esc(m.name)}">
+        <span class="map-card-thumb">
+          ${m.thumb ? `<img src="${esc(m.thumb)}" alt="${esc(m.name)}" loading="lazy">` : '<span class="map-card-placeholder"></span>'}
+        </span>
+        <span class="map-card-name">${esc(m.name)}</span>
+      </button>`).join('');
+    $$('#mapChips .map-card').forEach(btn =>
+      btn.addEventListener('click', () => {
+        pushView({ v: 'points', l1, l2, l3: btn.dataset.name });
+        showPoints({ v: 'points', l1, l2, l3: btn.dataset.name });
+      }));
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  }
+
+  /* ---------------- 具体地图 -> 点位 ---------------- */
+
+  async function showGroups(l1, l2) {
+    // 从历史记录返回时重新进入“具体地图”页
+    state.l1 = l1;
+    state.l2 = l2;
+    try {
+      const maps = await getJSON('/api/maps?l1=' + encodeURIComponent(l1) +
+        '&l2=' + encodeURIComponent(l2));
+      state.mapsInfo = maps;
+      showGroupsView(l1, l2, maps);
     } catch (e) {
       mapChips.innerHTML = '<div class="empty">地图加载失败</div>';
     }
   }
 
-  /* ---------------- 第三层：具体地图 -> 点位 ---------------- */
-
-  async function selectMap(map) {
-    state.l3 = map;
-    $$('#mapChips .map-card').forEach(b => b.classList.toggle('active', b.dataset.name === map));
-    const info = (state.mapsInfo || []).find(m => m.name === map) || {};
+  async function showPoints(st) {
+    state.l1 = st.l1;
+    state.l2 = st.l2;
+    state.l3 = st.l3;
+    layer1.hidden = true;
+    layer2.hidden = true;
+    layer3.hidden = true;
     pointsArea.hidden = false;
-    pointsTitle.textContent = `${state.l1} · ${state.l2} · ${map}`;
-    // 地图整图横幅（娱乐地图无整图则不显示）
+    pointsTitle.textContent = `${st.l1} · ${st.l2} · ${st.l3}`;
+    const info = (state.mapsInfo || []).find(m => m.name === st.l3) || {};
+    // 地图整图横幅（无整图则不显示）
     const banner = $('#mapBanner');
     if (info.full) {
       banner.hidden = false;
       const img = banner.querySelector('img');
       img.src = info.full;
-      img.alt = map;
-      banner.querySelector('.map-banner-name').textContent = map;
+      img.alt = st.l3;
+      banner.querySelector('.map-banner-name').textContent = st.l3;
     } else {
       banner.hidden = true;
     }
     renderSkeleton();
     try {
       const points = await getJSON('/api/points?status=approved' +
-        '&l1=' + encodeURIComponent(state.l1) +
-        '&l2=' + encodeURIComponent(state.l2) +
-        '&l3=' + encodeURIComponent(state.l3));
+        '&l1=' + encodeURIComponent(st.l1) +
+        '&l2=' + encodeURIComponent(st.l2) +
+        '&l3=' + encodeURIComponent(st.l3));
       renderPoints(points);
     } catch (e) {
       pointsGrid.innerHTML = '<div class="empty">加载失败，请重试</div>';
     }
   }
+
+  /* ---------------- 页面内返回按钮（走浏览器历史） ---------------- */
+
+  $('#backToCats').addEventListener('click', () => history.back());
+  $('#backToGroups').addEventListener('click', () => history.back());
+  $('#backToMaps').addEventListener('click', () => history.back());
 
   function renderSkeleton() {
     pointsGrid.innerHTML = Array(6).fill(
@@ -150,18 +236,31 @@
       </div>`).join('');
   }
 
+  function getPointImages(p) {
+    if (p.images && p.images.length) return p.images;
+    return [{ thumb: p.thumb_url, original: p.original_url }];
+  }
+
   function renderPoints(points) {
     if (!points.length) {
-      pointsGrid.innerHTML = '<div class="empty">该地图暂无已审核点位，点击右下角投稿</div>';
+      pointsGrid.innerHTML = '<div class="empty">该地图暂无已审核点位，点击上方「投稿」按钮投稿</div>';
       return;
     }
-    pointsGrid.innerHTML = points.map(p => `
-      <div class="point-card" data-original="${esc(p.original_url)}">
+    pointsGrid.innerHTML = points.map((p, i) => {
+      const imgs = getPointImages(p);
+      return `
+      <div class="point-card animate-fadeInUp grid-item-${(i % 8) + 1}" data-point="${i}">
         <div class="thumb-wrap">
-          <img src="${esc(p.thumb_url)}" alt="${esc(p.title)}" loading="lazy">
+          <img src="${esc(imgs[0].thumb)}" alt="${esc(p.title)}" loading="lazy">
+          ${imgs.length > 1 ? `<span class="multi-badge">×${imgs.length}</span>` : ''}
         </div>
-        <div class="card-body"><div class="card-title">${esc(p.title)}</div></div>
-      </div>`).join('');
+        <div class="card-body">
+          <div class="card-title">${esc(p.title)}</div>
+          ${p.maps && p.maps.length > 1 ? `<div class="card-maps">${p.maps.map(m => `<span class="map-tag">${esc(m)}</span>`).join('')}</div>` : ''}
+          ${p.tags ? `<div class="card-tags">${p.tags.split(/\s+/).filter(Boolean).map(t => `<span class="tag-chip">${esc(t)}</span>`).join('')}</div>` : ''}
+        </div>
+      </div>`;
+    }).join('');
 
     // 缩略图加载完成后淡入（骨架屏到实图的过渡）
     $$('.point-card img').forEach(img => {
@@ -170,28 +269,84 @@
     });
 
     $$('.point-card').forEach(card =>
-      card.addEventListener('click', () => openLightbox(
-        card.dataset.original, card.querySelector('.card-title').textContent)));
+      card.addEventListener('click', () => openLightbox(points, +card.dataset.point)));
   }
 
-  /* ---------------- 原图灯箱 ---------------- */
+  /* ---------------- 原图灯箱（多图翻页） ---------------- */
 
-  function openLightbox(src, title) {
-    $('#lbImg').src = src;
-    $('#lbTitle').textContent = title || '';
+  let lbItems = [];   // [{ src, title, desc }]
+  let lbIndex = 0;
+
+  function openLightbox(points, pointIdx) {
+    const flat = [];
+    const firstIdx = [];
+    points.forEach(p => {
+      firstIdx.push(flat.length);
+      getPointImages(p).forEach(im => flat.push({ src: im.original, title: p.title, desc: p.description || '' }));
+    });
+    lbItems = flat;
+    lbIndex = Math.max(0, Math.min(firstIdx[pointIdx] ?? 0, flat.length - 1));
+    renderLb();
     $('#lightbox').hidden = false;
   }
+
+  function renderLb() {
+    const item = lbItems[lbIndex];
+    $('#lbImg').src = item.src;
+    $('#lbTitle').textContent = `${item.title}（${lbIndex + 1}/${lbItems.length}）`;
+    const descEl = $('#lbDesc');
+    if (item.desc) {
+      descEl.textContent = item.desc;
+      descEl.hidden = false;
+    } else {
+      descEl.textContent = '';
+      descEl.hidden = true;
+    }
+    $('#lbPrev').hidden = lbItems.length <= 1;
+    $('#lbNext').hidden = lbItems.length <= 1;
+  }
+
+  function lbStep(delta) {
+    lbIndex = (lbIndex + delta + lbItems.length) % lbItems.length;
+    renderLb();
+  }
+
   $('#closeLightbox').addEventListener('click', () => { $('#lightbox').hidden = true; });
+  $('#lbPrev').addEventListener('click', (e) => { e.stopPropagation(); lbStep(-1); });
+  $('#lbNext').addEventListener('click', (e) => { e.stopPropagation(); lbStep(1); });
   $('#lightbox').addEventListener('click', (e) => {
     if (e.target === $('#lightbox')) $('#lightbox').hidden = true;
+  });
+  document.addEventListener('keydown', (e) => {
+    if ($('#lightbox').hidden) return;
+    if (e.key === 'ArrowLeft') lbStep(-1);
+    else if (e.key === 'ArrowRight') lbStep(1);
+    else if (e.key === 'Escape') $('#lightbox').hidden = true;
   });
 
   /* ---------------- 投稿弹窗 ---------------- */
 
   const submitModal = $('#submitModal');
-  const fCat = $('#fCat'), fGroup = $('#fGroup'), fMap = $('#fMap');
+  const fCat = $('#fCat'), fGroup = $('#fGroup'), fMapList = $('#fMapList');
 
-  $('#openSubmit').addEventListener('click', async () => {
+  function renderMapChecks(maps, container, checked) {
+    container.innerHTML = maps.map((m) => `
+      <label class="map-check-item">
+        <input type="checkbox" value="${esc(m.name)}" ${checked.has(m.name) ? 'checked' : ''}>
+        <span class="map-check-thumb">
+          ${m.thumb ? `<img src="${esc(m.thumb)}" alt="${esc(m.name)}" loading="lazy">` : '<span class="map-card-placeholder"></span>'}
+        </span>
+        <span class="map-check-name">${esc(m.name)}</span>
+      </label>`).join('');
+  }
+
+  function resetMapChecks(container) {
+    container.innerHTML = '<p class="form-hint">请先选择地图主题</p>';
+  }
+
+  $('#navSubmit').addEventListener('click', openSubmitModal);
+
+  async function openSubmitModal() {
     if (submitModal.hidden) {
       $('#formMsg').hidden = true;
       $('#formMsg').className = 'form-msg';
@@ -199,15 +354,14 @@
       try {
         const cats = await getJSON('/api/categories');
         fCat.innerHTML = '<option value="">请选择</option>' +
-          cats.map(c => `<option value="${esc(c)}">${esc(c)}</option>`).join('');
+          cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
       } catch (e) { toast('分类加载失败'); return; }
       fGroup.innerHTML = '<option value="">先选分类</option>';
-      fMap.innerHTML = '<option value="">先选主题</option>';
+      resetMapChecks(fMapList);
       fGroup.disabled = true;
-      fMap.disabled = true;
     }
     submitModal.hidden = !submitModal.hidden;
-  });
+  }
   $('#closeSubmit').addEventListener('click', () => { submitModal.hidden = true; });
   submitModal.addEventListener('click', (e) => {
     if (e.target === submitModal) submitModal.hidden = true;
@@ -215,8 +369,7 @@
 
   fCat.addEventListener('change', async () => {
     fGroup.disabled = !fCat.value;
-    fMap.disabled = true;
-    fMap.innerHTML = '<option value="">先选主题</option>';
+    resetMapChecks(fMapList);
     if (!fCat.value) { fGroup.innerHTML = '<option value="">先选分类</option>'; return; }
     fGroup.innerHTML = '<option value="">加载中...</option>';
     try {
@@ -227,42 +380,68 @@
   });
 
   fGroup.addEventListener('change', async () => {
-    fMap.disabled = !fGroup.value;
-    if (!fGroup.value) { fMap.innerHTML = '<option value="">先选主题</option>'; return; }
-    fMap.innerHTML = '<option value="">加载中...</option>';
+    if (!fGroup.value) { resetMapChecks(fMapList); return; }
+    fMapList.innerHTML = '<p class="form-hint">加载中...</p>';
     try {
       const maps = await getJSON('/api/maps?l1=' + encodeURIComponent(fCat.value) +
         '&l2=' + encodeURIComponent(fGroup.value));
-      fMap.innerHTML = '<option value="">请选择</option>' +
-        maps.map(m => `<option value="${esc(m.name)}">${esc(m.name)}</option>`).join('');
+      renderMapChecks(maps, fMapList, new Set());
     } catch (e) { toast('地图加载失败'); }
   });
 
-  // 图片预览 + 拖拽
+  // 图片多选预览 + 拖拽
   const fImage = $('#fImage');
   const fileDrop = $('#fileDrop');
-  const filePreview = $('#filePreview');
+  const fFileList = $('#fFileList');
+  let pickedFiles = [];
 
-  fImage.addEventListener('change', () => previewFile(fImage.files[0]));
+  fImage.addEventListener('change', () => {
+    pickedFiles = Array.from(fImage.files);
+    renderFileList();
+  });
   ['dragover', 'drop'].forEach(evt => fileDrop.addEventListener(evt, (e) => {
     e.preventDefault();
     fileDrop.classList.toggle('dragover', evt === 'dragover');
   }));
   fileDrop.addEventListener('drop', (e) => {
-    const f = e.dataTransfer.files && e.dataTransfer.files[0];
-    if (f) { fImage.files = e.dataTransfer.files; previewFile(f); }
+    const files = e.dataTransfer.files && Array.from(e.dataTransfer.files);
+    if (files && files.length) {
+      pickedFiles = files;
+      syncFileInput();
+      renderFileList();
+    }
   });
 
-  function previewFile(file) {
-    if (!file) return;
-    if (!/\.(png|jpe?g|webp|gif|bmp)$/i.test(file.name)) {
-      toast('仅支持图片文件');
+  function syncFileInput() {
+    const dt = new DataTransfer();
+    pickedFiles.forEach(f => dt.items.add(f));
+    fImage.files = dt.files;
+  }
+
+  function renderFileList() {
+    if (!pickedFiles.length) {
+      fFileList.innerHTML = '';
+      $('#fileHint').hidden = false;
       return;
     }
     $('#fileHint').hidden = true;
-    filePreview.hidden = false;
-    filePreview.src = URL.createObjectURL(file);
+    fFileList.innerHTML = pickedFiles.map((f, i) => `
+      <div class="file-row">
+        <img class="file-row-thumb" src="${URL.createObjectURL(f)}" alt="预览">
+        <div class="file-row-info">
+          <div class="file-row-name">${esc(f.name)}</div>
+        </div>
+        <button type="button" class="btn-ghost" data-index="${i}">移除</button>
+      </div>`).join('');
   }
+
+  fFileList.addEventListener('click', (e) => {
+    const btn = e.target.closest('.file-row .btn-ghost');
+    if (!btn) return;
+    pickedFiles.splice(+btn.dataset.index, 1);
+    syncFileInput();
+    renderFileList();
+  });
 
   $('#submitForm').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -270,26 +449,42 @@
     const btn = $('#submitBtn');
     msg.hidden = true;
 
-    if (!fCat.value || !fGroup.value || !fMap.value) {
-      showMsg(msg, '请完整选择分类、主题和地图', 'error');
+    if (!fCat.value || !fGroup.value) {
+      showMsg(msg, '请选择分类和地图主题', 'error');
+      return;
+    }
+    const checkedMaps = Array.from(fMapList.querySelectorAll('input[type="checkbox"]:checked'))
+      .map(c => c.value);
+    if (!checkedMaps.length) {
+      showMsg(msg, '请至少选择一个具体地图', 'error');
       return;
     }
     if (!$('#fTitle').value.trim()) {
-      showMsg(msg, '请填写点位描述', 'error');
+      showMsg(msg, '请填写标题', 'error');
       return;
     }
-    if (!fImage.files.length) {
-      showMsg(msg, '请上传点位图片', 'error');
+    if (!$('#fSubmitter').value.trim()) {
+      showMsg(msg, '请填写投稿人', 'error');
+      return;
+    }
+    if (!$('#fEmail').value.trim()) {
+      showMsg(msg, '请填写投稿人邮箱', 'error');
+      return;
+    }
+    if (!pickedFiles.length) {
+      showMsg(msg, '请上传至少一张点位图片', 'error');
       return;
     }
 
     const fd = new FormData();
     fd.append('category_l1', fCat.value);
     fd.append('map_group_l2', fGroup.value);
-    fd.append('map_name_l3', fMap.value);
+    checkedMaps.forEach(m => fd.append('map_names_l3', m));
     fd.append('title', $('#fTitle').value.trim());
-    fd.append('image', fImage.files[0]);
+    fd.append('description', $('#fDesc').value.trim());
+    fd.append('submitter', $('#fSubmitter').value.trim());
     fd.append('submitter_email', $('#fEmail').value.trim());
+    pickedFiles.forEach(f => fd.append('images', f));
 
     btn.disabled = true;
     btn.textContent = '提交中...';
@@ -299,10 +494,11 @@
       if (data.ok) {
         showMsg(msg, '投稿成功！审核通过后将在此展示', 'ok');
         e.target.reset();
-        filePreview.hidden = true;
-        $('#fileHint').hidden = false;
+        pickedFiles = [];
+        syncFileInput();
+        renderFileList();
+        resetMapChecks(fMapList);
         fGroup.disabled = true;
-        fMap.disabled = true;
       } else {
         showMsg(msg, data.error || '提交失败', 'error');
       }
@@ -322,5 +518,6 @@
 
   /* ---------------- 启动 ---------------- */
 
+  history.replaceState({ v: 'cats' }, '');
   loadCategories();
 })();

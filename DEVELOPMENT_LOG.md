@@ -63,3 +63,93 @@
   - `static/css/style.css`、`static/js/main.js`、`templates/index.html`、`templates/admin_dashboard.html`
   - `static/images/maps/`（33 张图片，新增）
   - `.gitignore`
+
+---
+
+## 2026-08-16（第二轮 · 后台管理与点位展示优化）
+
+### 一、后台新增硬删除功能（app.py + admin_dashboard.html）
+
+- 新增 `POST /admin/delete/<id>`（`@admin_required` 保护）：删除数据库记录并物理删除关联图片文件，不发邮件（区别于"拒绝"流程）
+- 后台卡片（待审核 / 已审核标签）均新增「删除」按钮，带 confirm 确认
+- 顺手修复 `admin_reject` 未鉴权的历史漏洞（补上 `@admin_required`）
+
+### 二、清理 untitle 演示投稿（数据操作）
+
+- 删除全部 `title = 'untitle'` 的投稿（12 条，id 1–12，均为 seed_demo.py 生成的演示数据）
+- 同步清理其关联的 `demo_*.webp` 图片文件（originals + thumbs）
+- 库中保留 3 条真实投稿（右卧室墙缝 / 客舱上甲板 / 庭院上卧室）
+
+### 三、移除后台批量上传功能
+
+- 删除 `POST /admin/bulk_upload` 接口、后台「批量上传」标签页、表单及全部相关 JS
+- 保留「全部通过」（`/admin/approve_all`）
+- 验证：`/admin/bulk_upload` 返回 404，后台页面无 bulk 残留引用
+
+### 四、点位卡片展示修复（style.css）
+
+- 点位卡片原为固定 1:1 正方形 + `object-fit: cover`，非正方形 PNG 会被裁切
+- 改为随图片自然宽高比自适应：`.thumb-wrap img { width:100%; height:auto; object-fit:contain }`，网格加 `align-items: start`，整图完整显示不裁切
+
+### 五、其他
+
+- 验证：服务器重启后 `/` 200；删除接口未登录 302 跳登录、不存在 id 返回 404；`/admin/approve_all` 正常
+- 本地 `database.db` 为运行时数据，删除操作不产生 git 变更
+
+### 本次提交
+
+- 提交信息：`feat: 后台支持删除点位并移除批量上传，点位卡片自适应图片比例`
+- 涉及文件：
+  - `app.py`（删除接口、reject 鉴权、移除 bulk_upload）
+  - `templates/admin_dashboard.html`（删除按钮、移除批量上传 UI/JS）
+  - `static/css/style.css`（点位卡片自然宽高比）
+  - `DEVELOPMENT_LOG.md`（本日志）
+  - 上一轮遗留已暂存：前端重做、分类图标、主题切换等（一并提交）
+
+---
+
+## 2026-08-16（第三轮 · 移除娱乐地图大类）
+
+### 变更
+
+- `L2_GROUPS` 删除「娱乐地图」组（9 张娱乐地图：经典之家-疯狂奶酪赛、雪夜古堡-疯狂奶酪赛、金丝雀之家、熊猫馆-烟花大作战、阳光沙滩、后院、5V5大都会、家之典经、经典之家-谁是外星人），现为 **10 个主题组**
+- `app.py` 删除 `_FUN_THUMBS` 映射，`get_map_images()` 相应简化（全部地图均含整图 `-地图.png`）
+- 删除 3 张仅娱乐地图使用的静态图：`金丝雀之家.png`、`阳光沙滩.png`、`经典之家-疯狂奶酪赛.png`（其余娱乐地图缩略图复用的主题图保留）
+- 数据库无娱乐地图点位数据，无需迁移
+
+### 本次提交
+
+- 提交信息：`feat: 移除娱乐地图大类`
+- 涉及文件：`app.py`、`static/js/main.js`（注释）、`static/images/maps/`（删 3 图）、`HANDOFF.md`、`DEVELOPMENT_LOG.md`
+
+---
+
+## 2026-08-17（第四轮 · 标签 / gitignore / 图标 / 拒绝原因）
+
+### 一、投稿描述支持 #标签
+
+- `app.py` 新增 `_extract_tags()`：从描述中提取 `#标签`（如 `#果盘 #墙角`），去重、保持顺序，空格分隔存入 `tags` 列
+- 投稿（`/api/submit`）与后台编辑（`/admin/edit`）都会重新提取标签
+- 前端点位卡片把 tags 渲染为 `#` 前缀的简约 chip（`.tag-chip`，浅色圆角胶囊）
+- 投稿弹窗描述框 placeholder 提示可用 `#标签`
+
+### 二、静态资源入库，投稿数据保持 ignore
+
+- 审计确认：css/js/字体/地图与分类图片等静态资源全部已入库（originals/thumbs 之外无 ignore）
+- 补齐缺失的 `static/originals/.gitkeep`、`static/thumbs/.gitkeep` 并入库（投稿数据仍被 ignore）
+- `.gitignore` 补充注释明确：仅忽略投稿数据（上传图片）
+
+### 三、网页图标
+
+- 三个模板（index / admin_login / admin_dashboard）均添加 `<link rel="icon">` → `static/images/mice/莱恩.png`
+
+### 四、拒绝投稿可注明原因
+
+- `/admin/reject/<id>` 接受可选 `reason` 表单字段，写入"未通过审核"邮件（`send_submitter_email` 增加 `reason` 参数）
+- 后台「拒绝」按钮先弹窗询问拒绝原因（可留空），随请求提交
+
+### 五、验证
+
+- 投稿含 `#果盘 #墙角 #果盘` → tags 存为 `果盘 墙角`（去重）
+- 后台编辑描述后 tags 同步更新；拒绝邮件正文在有/无原因两种情况下均正确
+- `/admin/reject` 带 reason 实测返回成功；favicon 路由 200

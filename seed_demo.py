@@ -3,6 +3,7 @@
 用法：python seed_demo.py
 """
 import os
+import json
 import sqlite3
 
 from PIL import Image, ImageDraw, ImageFont
@@ -61,10 +62,10 @@ def main():
                 img_thumb.save(os.path.join(THUMBS, tname), "WEBP", quality=80)
 
                 conn.execute(
-                    "INSERT INTO points (category_l1, map_group_l2, map_name_l3, title, "
+                    "INSERT INTO points (category_l1, map_group_l2, map_name_l3, maps, title, "
                     "thumb_url, original_url, status, submitter_email, created_at) "
-                    "VALUES (?, ?, ?, ?, ?, ?, 'approved', '', datetime('now', 'localtime'))",
-                    (cat, group, m, f"演示点位：{m} 的 {cat} 示例",
+                    "VALUES (?, ?, ?, ?, ?, ?, ?, 'approved', '', datetime('now', 'localtime'))",
+                    (cat, group, m, json.dumps([m]), f"演示点位：{m} 的 {cat} 示例",
                      f"/static/thumbs/{tname}", f"/static/originals/{oname}"),
                 )
                 count += 1

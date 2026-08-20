@@ -45,7 +45,7 @@
 
 - `app.py`：
   - `L1_CATEGORIES` = 4 个分类（挂机果盘 / **炸药桶** / 投掷物点投 / 罗宾汉泰菲种树）—— 几何桶+隔墙炸已合并为炸药桶，带 `L1_CATEGORY_MIGRATE` 旧数据迁移
-  - `L2_GROUPS` = 11 个主题组（经典之家/雪夜古堡/夏日游轮/太空堡垒/游乐场/森林牧场/大都会/熊猫馆/御门酒店/天宫/娱乐地图）
+  - `L2_GROUPS` = 10 个主题组（经典之家/雪夜古堡/夏日游轮/太空堡垒/游乐场/森林牧场/大都会/熊猫馆/御门酒店/天宫）—— 娱乐地图组已删除
   - `get_map_images()`：地图名 → `{thumb, full}`（变体 I/II/III 继承主题族缩略图）
   - API：`/api/categories` `/api/groups` `/api/maps`（返回 `{name, thumb, full}`）`/api/points` `/api/submit`，后台 `/admin/*`
 - 前端地图卡片：`.map-card` + `.map-card-thumb`（**1:1 正方形**）+ `.map-card-name`；点位区整图横幅 `.map-banner`

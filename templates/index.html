@@ -3,44 +3,82 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
-  <title>猫和老鼠手游 · 点位查询</title>
+  <title>猫和老鼠手游 各类点位查询</title>
+  <link rel="icon" type="image/png" href="/static/images/mice/莱恩.png">
+  <script src="/static/js/theme.js"></script>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
 
 <header class="site-header">
   <div class="header-inner">
-    <div class="header-left">
-      <h1 class="logo">猫和老鼠<span>点位查询</span></h1>
-      <p class="subtitle">挂机果盘 · 炸药桶 · 点投 · 种树</p>
-    </div>
-    <a class="header-link" href="/admin">后台</a>
+    <a class="logo" href="/">猫和老鼠<span>点位查询</span></a>
+    <nav class="header-nav">
+      <button class="nav-pill" id="navSubmit">投稿</button>
+      <a class="nav-pill" href="/admin">后台</a>
+      <button class="nav-icon-btn" id="darkToggle" aria-label="切换深色模式">
+        <svg class="icon-sun" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="5" stroke="currentColor" stroke-width="2"/>
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
+        </svg>
+        <svg class="icon-moon" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+          <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                d="M21 12.79A9 9 0 1111.21 3a7 7 0 109.79 9.79z"/>
+        </svg>
+      </button>
+    </nav>
   </div>
 </header>
 
 <main class="container">
 
-  <!-- 第一层：分类 Tab -->
+  <header class="page-header">
+    <h1 class="page-title">点位查询</h1>
+    
+    <p class="page-sub">选择分类与地图，快速浏览玩家分享的点位</p>
+  </header>
+
+  <!-- 第一层：分类 -->
   <section class="layer" id="layer1">
-    <div class="layer-label">1 · 选择分类</div>
+    <div class="layer-label"> 选择分类</div>
     <div class="cat-tabs" id="catTabs"><!-- JS 渲染 --></div>
   </section>
 
-  <!-- 第二层：地图主题 -->
+  <!-- 第二层：地图主题（分类介绍已并入本页） -->
   <section class="layer" id="layer2" hidden>
-    <div class="layer-label">2 · 选择地图主题</div>
-    <div class="chip-row" id="groupChips"><!-- JS 渲染 --></div>
+    <div class="list-toolbar">
+      <button class="btn-ghost" id="backToCats">← 返回分类</button>
+      <div class="layer-label"> 选择地图主题</div>
+    </div>
+    <div class="intro-card glass">
+      <div class="intro-media">
+        <img id="introIcon" src="" alt="">
+      </div>
+      <div class="intro-body">
+        <h2 class="intro-title" id="introTitle"></h2>
+        <p class="intro-desc" id="introDesc"></p>
+        <ul class="intro-tips" id="introTips"></ul>
+      </div>
+    </div>
+    <div class="map-card-grid" id="groupChips"><!-- JS 渲染 --></div>
   </section>
 
-  <!-- 第三层：具体地图 -->
+  <!-- 具体地图 -->
   <section class="layer" id="layer3" hidden>
-    <div class="layer-label">3 · 选择具体地图</div>
-    <div class="chip-row" id="mapChips"><!-- JS 渲染 --></div>
+    <div class="list-toolbar">
+      <button class="btn-ghost" id="backToGroups">← 返回主题</button>
+      <div class="layer-label">选择具体地图</div>
+    </div>
+    <div class="map-card-grid" id="mapChips"><!-- JS 渲染 --></div>
   </section>
 
   <!-- 点位网格 -->
   <section class="layer" id="pointsArea" hidden>
-    <div class="layer-label" id="pointsTitle">点位展示</div>
+    <div class="list-toolbar">
+      <button class="btn-ghost" id="backToMaps">← 返回具体地图</button>
+      <div class="layer-label" id="pointsTitle">点位展示</div>
+    </div>
     <div class="map-banner" id="mapBanner" hidden>
       <img src="" alt="" class="map-banner-img">
       <span class="map-banner-name"></span>
@@ -50,9 +88,62 @@
 
 </main>
 
-<div class="fab-wrap">
-  <button class="fab" id="openSubmit">＋<span>投稿</span></button>
-</div>
+<!-- 首页底部：网站说明 / 使用指南 / 反馈 / 官方资源 / 致谢 -->
+<footer class="site-footer">
+  <div class="container">
+    <section class="footer-section footer-about">
+      <h2 class="footer-title">网站说明</h2>
+      <p class="footer-text">
+        本站是《猫和老鼠》手游玩家自建的点位查询站，收录挂机果盘、炸药桶、点投、罗宾汉泰菲种树等玩法的地图点位。
+        地图数据与命名以社区资料站为准，点位内容由玩家投稿、管理员审核后展示，供大家游戏时快速查用。
+        项目已在 GitHub 开源，欢迎反馈问题或参与建设。
+      </p>
+    </section>
+
+    <nav class="footer-grid" aria-label="页脚导航">
+      <section class="footer-section">
+        <h2 class="footer-title">使用指南</h2>
+        <ul class="footer-list">
+          <li>① 顶部选择分类 → 地图主题 → 具体地图，浏览已审核点位</li>
+          <li>② 点击点位卡片可查看原图与描述，多图可左右翻页</li>
+          <li>③ 点击「投稿」上传点位截图，填写标题、描述（可用 #标签）与联系方式</li>
+          <li>④ 投稿经管理员审核通过后，将在对应地图下展示</li>
+        </ul>
+      </section>
+
+      <section class="footer-section">
+        <h2 class="footer-title">反馈渠道</h2>
+        <ul class="footer-list">
+          <li>网站问题、点位纠错或建议，请发送邮件至：</li>
+          <li><a class="footer-link" href="mailto:1248185594@qq.com">1248185594@qq.com</a></li>
+          <li class="footer-muted">也欢迎在 GitHub 提交 Issue 反馈</li>
+        </ul>
+      </section>
+
+      <section class="footer-section">
+        <h2 class="footer-title">网易官方资源</h2>
+        <ul class="footer-list">
+          <li><a class="footer-link" href="https://tom.163.com/" target="_blank" rel="noopener noreferrer">官方网站</a></li>
+          <li><a class="footer-link" href="https://ds.163.com/user/9c1c00448e28455781e8fde62830160d/" target="_blank" rel="noopener noreferrer">网易大神</a></li>
+          <li><a class="footer-link" href="https://weibo.com/tnj163" target="_blank" rel="noopener noreferrer">官方微博</a></li>
+          <li><a class="footer-link" href="https://space.bilibili.com/298683153" target="_blank" rel="noopener noreferrer">B站官方</a></li>
+        </ul>
+      </section>
+
+      <section class="footer-section">
+        <h2 class="footer-title">致谢</h2>
+        <ul class="footer-list">
+          <li class="footer-muted">感谢所有投稿人、审核管理员与测试玩家</li>
+          <li class="footer-muted">（致谢名单待补充）</li>
+        </ul>
+      </section>
+    </nav>
+
+    <p class="footer-copyright">
+      本站为玩家社区非官方站点，与网易官方无关；游戏素材版权归网易所有。
+    </p>
+  </div>
+</footer>
 
 <!-- 投稿弹窗 -->
 <div class="modal-mask" id="submitModal" hidden>
@@ -69,24 +160,35 @@
         <select name="map_group_l2" id="fGroup" required disabled><option value="">先选分类</option></select>
       </div>
       <div class="form-group">
-        <label>具体地图</label>
-        <select name="map_name_l3" id="fMap" required disabled><option value="">先选主题</option></select>
-      </div>
-      <div class="form-group">
-        <label>点位描述</label>
-        <input type="text" name="title" id="fTitle" maxlength="60" placeholder="例：二楼右侧墙角，木桶堆旁" required>
-      </div>
-      <div class="form-group">
-        <label>点位图片（PNG）</label>
-        <div class="file-drop" id="fileDrop">
-          <input type="file" name="image" id="fImage" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp" required>
-          <div class="file-hint" id="fileHint">点击或拖拽图片到这里</div>
-          <img class="file-preview" id="filePreview" alt="预览" hidden>
+        <label>具体地图（可多选）</label>
+        <p class="form-hint">同一主题下的地图点位通用，一张投稿可同时关联多张地图</p>
+        <div class="map-check-grid" id="fMapList">
+          <p class="form-hint">请先选择地图主题</p>
         </div>
       </div>
       <div class="form-group">
-        <label>投稿人邮箱（选填）</label>
-        <input type="email" name="submitter_email" id="fEmail" placeholder="用于审核结果通知">
+        <label>标题</label>
+        <input type="text" name="title" id="fTitle" maxlength="60" placeholder="例：二楼右侧墙角木桶堆旁" required>
+      </div>
+      <div class="form-group">
+        <label>点位描述（选填）</label>
+        <textarea name="description" id="fDesc" rows="3" maxlength="300" placeholder="补充说明该点位，可用 #标签 标记（如 #果盘 #墙角）"></textarea>
+      </div>
+      <div class="form-group">
+        <label>点位图片（PNG，可多选）</label>
+        <div class="file-drop" id="fileDrop">
+          <input type="file" name="images" id="fImage" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp" multiple required>
+          <div class="file-hint" id="fileHint">点击或拖拽多张图片到这里</div>
+        </div>
+        <div class="file-list" id="fFileList"></div>
+      </div>
+      <div class="form-group">
+        <label>投稿人</label>
+        <input type="text" name="submitter" id="fSubmitter" maxlength="30" placeholder="你的称呼，用于邮件问候" required>
+      </div>
+      <div class="form-group">
+        <label>投稿人邮箱</label>
+        <input type="email" name="submitter_email" id="fEmail" placeholder="用于审核结果通知" required>
       </div>
       <div class="form-msg" id="formMsg" hidden></div>
       <button type="submit" class="btn-primary" id="submitBtn">提交投稿</button>
@@ -94,12 +196,15 @@
   </div>
 </div>
 
-<!-- 原图查看弹窗 -->
+<!-- 原图查看弹窗（支持多图翻页） -->
 <div class="modal-mask" id="lightbox" hidden>
   <div class="lightbox glass">
     <button class="modal-close" id="closeLightbox" aria-label="关闭">✕</button>
+    <button class="lb-nav lb-prev" id="lbPrev" aria-label="上一张">‹</button>
     <img id="lbImg" src="" alt="点位原图">
+    <button class="lb-nav lb-next" id="lbNext" aria-label="下一张">›</button>
     <p id="lbTitle" class="lightbox-title"></p>
+    <p id="lbDesc" class="lightbox-desc" hidden></p>
   </div>
 </div>
 
