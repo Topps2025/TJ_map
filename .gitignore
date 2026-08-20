@@ -13,3 +13,4 @@ static/thumbs/*
 !static/originals/.gitkeep
 !static/thumbs/.gitkeep
 AGENTS.md
+HANDOFF.md

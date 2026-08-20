@@ -159,6 +159,18 @@ button { font-family: inherit; cursor: pointer; }
   font-size: 13px;
   font-weight: 500;
 }
+.logo .logo-icon {
+  height: 1.25em;      /* 与页眉文字（19px）视觉对齐 */
+  width: auto;
+  align-self: center;
+  margin-right: 2px;
+}
+.logo .logo-credit {
+  color: var(--wiki-primary);
+  text-decoration: none;
+  transition: text-decoration 0.15s ease;
+}
+.logo .logo-credit:hover { text-decoration: underline; }
 
 .header-nav {
   display: flex;
@@ -241,8 +253,17 @@ button { font-family: inherit; cursor: pointer; }
   letter-spacing: -0.01em;
   color: var(--wiki-primary);
   text-shadow: 0 0 40px var(--wiki-primary-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
 }
 .dark .page-title { color: #60a5fa; }
+.page-title .page-title-icon {
+  height: 1.1em;       /* 略大于字高做光学补偿 */
+  width: auto;
+  flex-shrink: 0;
+}
 
 .page-desc {
   margin-top: 8px;
@@ -737,6 +758,23 @@ button { font-family: inherit; cursor: pointer; }
   animation: fadeIn 0.2s ease;
 }
 @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; } }
+
+/* 弹窗内容：打开时上浮淡入 */
+.modal-mask .modal {
+  animation: modalIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 弹窗关闭：遮罩淡出 + 内容下沉 */
+.modal-mask.closing { animation: fadeOut 0.18s ease forwards; }
+.modal-mask.closing .modal { animation: modalOut 0.18s ease forwards; }
+@keyframes modalOut {
+  to { opacity: 0; transform: translateY(10px) scale(0.98); }
+}
 
 .glass {
   background: var(--wiki-surface-raised);
@@ -1140,33 +1178,139 @@ button { font-family: inherit; cursor: pointer; }
   html { scroll-behavior: auto; }
 }
 
-/* ---------------- 首页底部（仿 tjwiki） ---------------- */
+/* ---------------- 首页底部（1:1 仿 tjwiki：分隔线 + 网站说明 + CollapseCard 折叠卡 + 站点磁贴） ---------------- */
 
 .site-footer {
   margin-top: 40px;
-  border-top: 1px solid var(--wiki-border);
-  background: var(--wiki-surface);
-  padding: 32px 0 40px;
+  padding: 0 0 40px;
 }
-.footer-section { margin-bottom: 22px; }
-.footer-about { border-bottom: 1px solid var(--wiki-border); padding-bottom: 20px; }
-.footer-title {
-  font-size: 15px;
+
+/* 分隔线（tjwiki：h-px bg-gray-300 dark:bg-gray-700） */
+.footer-divider {
+  height: 1px;
+  max-width: 896px;
+  margin: 0 auto;
+  background: #d1d5db;
+}
+.dark .footer-divider { background: #334155; }
+
+/* 网站说明（居中大标题 + max-w-2xl 左对齐正文） */
+.footer-about { padding: 24px 0 6px; text-align: center; }
+.footer-about-title {
+  font-family: var(--font-display-stack);
+  font-size: 30px;
   font-weight: 700;
-  color: var(--wiki-foreground);
   margin-bottom: 10px;
+  color: var(--wiki-foreground);
 }
-.footer-text {
-  font-size: 13px;
+.dark .footer-about-title { color: #fff; }
+.footer-about-body {
+  max-width: 672px;
+  margin: 0 auto;
+  padding: 0 8px 18px;
+  text-align: left;
+  font-size: 14px;
   line-height: 1.8;
+  color: #4b5563;
+}
+.dark .footer-about-body { color: #d1d5db; }
+
+/* 折叠卡片（tjwiki CollapseCard：标题栏 + 箭头 + 内容） */
+.footer-cards {
+  max-width: 672px;
+  margin: 14px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wiki-card {
+  background: var(--wiki-surface);
+  border: 1px solid var(--wiki-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s ease;
+}
+.wiki-card:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1); }
+.wiki-card-head {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--wiki-foreground);
+  border-bottom: 1px solid #f3f4f6;
+}
+.dark .wiki-card-head { border-bottom-color: #1f2937; }
+.wiki-card-head::-webkit-details-marker { display: none; }
+.wiki-card .chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
   color: var(--wiki-muted-foreground);
+  transform: rotate(-90deg);
+  transition: transform 0.2s ease;
 }
-.footer-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 26px;
-  margin-top: 24px;
+.wiki-card[open] .wiki-card-head .chevron { transform: rotate(0deg); }
+.wiki-card-body {
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #374151;
 }
+.dark .wiki-card-body { color: #d1d5db; }
+.wiki-card[open] .wiki-card-body { animation: cardSlideDown 0.18s ease; }
+@keyframes cardSlideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+.thanks-line {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 14px;
+  margin-top: 6px;
+}
+
+/* 站点磁贴（tjwiki ActionTile：网易官方资源） */
+.footer-sites-wrap { margin-top: 30px; text-align: center; }
+.footer-sites-title {
+  font-family: var(--font-display-stack);
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 18px;
+  color: var(--wiki-foreground);
+}
+.dark .footer-sites-title { color: #fff; }
+.footer-sites {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+.site-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  width: 132px;
+  padding: 14px 10px;
+  background: var(--wiki-surface);
+  border: 1px solid var(--wiki-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  text-decoration: none;
+  transition: box-shadow 0.2s ease, transform 0.2s ease;
+}
+.site-tile:hover {
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
+  transform: translateY(-2px);
+}
+.site-tile-icon { width: 30px; height: 30px; color: var(--wiki-primary); }
+.site-tile-name { font-size: 14px; font-weight: 600; color: var(--wiki-foreground); }
+
 .footer-list { list-style: none; }
 .footer-list li {
   font-size: 13px;
@@ -1180,15 +1324,17 @@ button { font-family: inherit; cursor: pointer; }
 }
 .footer-link:hover { text-decoration: underline; }
 .footer-muted { color: var(--wiki-muted-foreground); opacity: 0.85; }
+
+/* 版权行（tjwiki IcpFooter 风格：顶部细线 + 居中灰字） */
 .footer-copyright {
-  margin-top: 26px;
-  padding-top: 16px;
+  max-width: 896px;
+  margin: 32px auto 0;
+  padding-top: 14px;
   border-top: 1px solid var(--wiki-border);
   font-size: 12px;
   line-height: 1.7;
   color: var(--wiki-muted-foreground);
   text-align: center;
-  opacity: 0.8;
 }
 
 /* ---------------- 右下角投稿卡片 ---------------- */
@@ -1219,6 +1365,12 @@ button { font-family: inherit; cursor: pointer; }
   box-shadow: 0 10px 24px rgba(37, 99, 235, 0.45);
 }
 .submit-fab:active { transform: scale(0.96); }
+/* 投稿卡片出现时（进入地图/点位页）轻快弹出 */
+.submit-fab { animation: fabIn 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes fabIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
 .submit-fab[hidden] { display: none; }
 
 /* ---------------- 响应式微调 ---------------- */
