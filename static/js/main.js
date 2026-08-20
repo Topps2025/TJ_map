@@ -7,7 +7,7 @@
   'use strict';
 
   const $ = (s) => document.querySelector(s);
-  const $$ = (s) => Array.from(document.querySelectorAll(s));
+  const $$ = (s, scope) => Array.from((scope || document).querySelectorAll(s));
 
   const state = { l1: '', l2: '', l3: '', mapsInfo: [], cats: [] };
 
@@ -20,6 +20,7 @@
   const mapChips = $('#mapChips');
   const pointsGrid = $('#pointsGrid');
   const pointsTitle = $('#pointsTitle');
+  const siteFooter = $('.site-footer');
 
   /* ---------------- 工具 ---------------- */
 
@@ -101,6 +102,7 @@
     layer3.hidden = true;
     pointsArea.hidden = true;
     fabSubmit.hidden = true;
+    siteFooter.hidden = false;   // 页脚仅首页（分类页）展示
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -143,8 +145,10 @@
     layer3.hidden = true;
     pointsArea.hidden = true;
     fabSubmit.hidden = true;   // 点进具体分类的介绍页不显示投稿卡片（进入具体地图后再出现）
+    siteFooter.hidden = true;   // 非首页隐藏页脚
     renderIntro(state.cats.find(c => c.name === l1) || {});
     groupChips.innerHTML = '<div class="loading-text">加载主题中...</div>';
+    $('#catPreview').hidden = true;   // 隐藏旧分类的预览，等待新数据
     window.scrollTo({ top: 0, behavior: 'smooth' });
     try {
       const groups = await getJSON('/api/groups?l1=' + encodeURIComponent(l1));
@@ -157,6 +161,9 @@
         </button>`).join('');
       $$('#groupChips .map-card').forEach(btn =>
         btn.addEventListener('click', () => openGroup(l1, btn.dataset.name)));
+      // 分类投稿预览：展示该分类下已审核点位（最多 8 条）
+      loadPreview('/api/points?status=approved&l1=' + encodeURIComponent(l1),
+        $('#catPreviewGrid'), $('#catPreview'), 'cat');
     } catch (e) {
       groupChips.innerHTML = '<div class="empty">主题加载失败</div>';
     }
@@ -190,6 +197,7 @@
     layer3.hidden = false;
     pointsArea.hidden = true;
     fabSubmit.hidden = false;
+    siteFooter.hidden = true;   // 非首页隐藏页脚
     mapChips.innerHTML = maps.map((m, i) => `
       <button class="map-card animate-fadeInUp grid-item-${(i % 8) + 1}" data-name="${esc(m.name)}">
         <span class="map-card-thumb">
@@ -202,6 +210,11 @@
         pushView({ v: 'points', l1, l2, l3: btn.dataset.name });
         showPoints({ v: 'points', l1, l2, l3: btn.dataset.name });
       }));
+    $('#groupPreview').hidden = true;   // 隐藏旧主题的预览，等待新数据
+    // 主题投稿预览：展示该分类+主题下已审核点位（最多 8 条）
+    loadPreview('/api/points?status=approved&l1=' + encodeURIComponent(l1) +
+      '&l2=' + encodeURIComponent(l2),
+      $('#groupPreviewGrid'), $('#groupPreview'), 'group');
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -230,6 +243,7 @@
     layer3.hidden = true;
     pointsArea.hidden = false;
     fabSubmit.hidden = false;
+    siteFooter.hidden = true;   // 非首页隐藏页脚
     pointsTitle.textContent = `${st.l1} · ${st.l2} · ${st.l3}`;
     const info = (state.mapsInfo || []).find(m => m.name === st.l3) || {};
     // 地图整图横幅（无整图则不显示）
@@ -275,14 +289,10 @@
     return [{ thumb: p.thumb_url, original: p.original_url }];
   }
 
-  function renderPoints(points) {
-    if (!points.length) {
-      pointsGrid.innerHTML = '<div class="empty">该地图暂无已审核点位，点击右下角「投稿」卡片投稿</div>';
-      return;
-    }
-    pointsGrid.innerHTML = points.map((p, i) => {
-      const imgs = getPointImages(p);
-      return `
+  // 生成单张点位卡片 HTML（点位网格与分类/主题预览共用）
+  function pointCardHTML(p, i) {
+    const imgs = getPointImages(p);
+    return `
       <div class="point-card animate-fadeInUp grid-item-${(i % 8) + 1}" data-point="${i}">
         <div class="thumb-wrap">
           <img src="${esc(imgs[0].thumb)}" alt="${esc(p.title)}" loading="lazy">
@@ -294,16 +304,55 @@
           ${p.tags ? `<div class="card-tags">${p.tags.split(/\s+/).filter(Boolean).map(t => `<span class="tag-chip">${esc(t)}</span>`).join('')}</div>` : ''}
         </div>
       </div>`;
-    }).join('');
+  }
+
+  // 渲染点位列表到网格，并绑定点击打开灯箱
+  function renderPointsTo(grid, points) {
+    if (!points.length) {
+      grid.innerHTML = '<div class="empty">暂无已审核点位，点击右下角「投稿」卡片投稿</div>';
+      return;
+    }
+    grid.innerHTML = points.map((p, i) => pointCardHTML(p, i)).join('');
 
     // 缩略图加载完成后淡入（骨架屏到实图的过渡）
-    $$('.point-card img').forEach(img => {
+    $$('.point-card img', grid).forEach(img => {
       if (img.complete) img.classList.add('loaded');
       else img.addEventListener('load', () => img.classList.add('loaded'));
     });
 
-    $$('.point-card').forEach(card =>
+    $$('.point-card', grid).forEach(card =>
       card.addEventListener('click', () => openLightbox(points, +card.dataset.point)));
+  }
+
+  function renderPoints(points) {
+    if (!points.length) {
+      pointsGrid.innerHTML = '<div class="empty">该地图暂无已审核点位，点击右下角「投稿」卡片投稿</div>';
+      return;
+    }
+    renderPointsTo(pointsGrid, points);
+  }
+
+  /* ---------------- 分类/主题投稿预览（避免投稿少显单薄） ---------------- */
+
+  // 加载指定范围（分类 l1 或 分类+主题 l1+l2）的已审核点位，最多展示 PREVIEW_MAX 条；
+  // 无数据时隐藏预览区块。block 未挂载或加载失败均静默隐藏。
+  // key 为令牌标识：同一 key 的新请求会使旧请求结果作废，防止快速切换时串页。
+  const PREVIEW_MAX = 8;
+  const previewTokens = {};
+
+  async function loadPreview(url, grid, block, key) {
+    if (!grid || !block) return;
+    key = key || 'default';
+    const token = (previewTokens[key] = (previewTokens[key] || 0) + 1);
+    try {
+      const points = await getJSON(url);
+      if (token !== previewTokens[key]) return;   // 已有更新的请求，丢弃旧结果
+      if (!points.length) { block.hidden = true; return; }
+      renderPointsTo(grid, points.slice(0, PREVIEW_MAX));
+      block.hidden = false;
+    } catch (e) {
+      if (token === previewTokens[key]) block.hidden = true;
+    }
   }
 
   /* ---------------- 弹层滚动锁定（移动端点投稿/看原图时页面不乱滚） ---------------- */
@@ -437,6 +486,10 @@
   // 打开投稿弹窗并预填字段：prefill = {l1, l2, l3}
   async function openSubmitModal(prefill) {
     prefill = prefill || {};
+    // 重置图片选择：清空已选文件与 input，避免二次打开后重复选择同一文件不触发 change
+    pickedFiles = [];
+    fImage.value = '';
+    renderFileList();
     const prevScroll = window.scrollY || document.documentElement.scrollTop || 0;
     submitModal.classList.remove('closing');
     submitModal.hidden = false;
@@ -606,6 +659,12 @@
         renderFileList();
         resetMapChecks(fMapList);
         fGroup.disabled = true;
+        refreshCurrentData();   // 投稿完成后回拉当前页最新点位/预览
+        // 投稿成功后自动关闭弹窗，避免手动关闭；重开后仍会按当前层级预填分类/地图
+        setTimeout(() => {
+          closeSubmitModal();
+          toast('投稿成功！审核通过后将在此展示');
+        }, 800);
       } else {
         showMsg(msg, data.error || '提交失败', 'error');
       }
@@ -616,6 +675,28 @@
       btn.textContent = '提交投稿';
     }
   });
+
+  /* ---------------- 提交后刷新当前视图（投稿完成立即回拉最新点位） ---------------- */
+
+  // 按当前浏览层级刷新数据区：点位页刷新点位网格，分类/主题页刷新投稿预览。
+  // 投稿为 pending 状态，审核通过后再回到本页即可看到，无需手动刷新。
+  function refreshCurrentData() {
+    if (state.l3) {
+      getJSON('/api/points?status=approved' +
+        '&l1=' + encodeURIComponent(state.l1) +
+        '&l2=' + encodeURIComponent(state.l2) +
+        '&l3=' + encodeURIComponent(state.l3))
+        .then(points => renderPoints(points))
+        .catch(() => {});
+    } else if (state.l2) {
+      loadPreview('/api/points?status=approved&l1=' + encodeURIComponent(state.l1) +
+        '&l2=' + encodeURIComponent(state.l2),
+        $('#groupPreviewGrid'), $('#groupPreview'), 'group');
+    } else if (state.l1) {
+      loadPreview('/api/points?status=approved&l1=' + encodeURIComponent(state.l1),
+        $('#catPreviewGrid'), $('#catPreview'), 'cat');
+    }
+  }
 
   function showMsg(el, text, type) {
     el.textContent = text;

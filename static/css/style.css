@@ -283,6 +283,11 @@ button { font-family: inherit; cursor: pointer; }
 
 .layer { margin-bottom: 26px; }
 
+/* 分类/主题页的投稿预览区块（位于地图卡片上方，先看投稿再选地图） */
+.preview-block { margin-top: 4px; }
+.preview-block + .map-card-grid { margin-top: 24px; }
+.preview-block .layer-label { margin-top: 0; }
+
 .layer-label {
   display: flex;
   align-items: center;

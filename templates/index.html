@@ -60,6 +60,12 @@
         <ul class="intro-tips" id="introTips"></ul>
       </div>
     </div>
+    <!-- 分类投稿预览：点入分类即展示该分类下已审核点位（避免投稿少显单薄） -->
+    <div class="preview-block" id="catPreview" hidden>
+      <div class="layer-label">本分类投稿预览</div>
+      <div class="grid" id="catPreviewGrid"></div>
+    </div>
+
     <div class="map-card-grid" id="groupChips"><!-- JS 渲染 --></div>
   </section>
 
@@ -69,6 +75,13 @@
       <button class="btn-ghost" id="backToGroups">← 返回主题</button>
       <div class="layer-label">选择具体地图</div>
     </div>
+
+    <!-- 主题投稿预览：点入地图大类即展示该主题下已审核点位 -->
+    <div class="preview-block" id="groupPreview" hidden>
+      <div class="layer-label">本主题投稿预览</div>
+      <div class="grid" id="groupPreviewGrid"></div>
+    </div>
+
     <div class="map-card-grid" id="mapChips"><!-- JS 渲染 --></div>
   </section>
 
@@ -218,18 +231,17 @@
       </div>
       <div class="form-group">
         <label>具体地图（可多选）</label>
-        <p class="form-hint">同一主题下的地图点位通用，一张投稿可同时关联多张地图</p>
         <div class="map-check-grid" id="fMapList">
           <p class="form-hint">请先选择地图主题</p>
         </div>
       </div>
       <div class="form-group">
         <label>标题</label>
-        <input type="text" name="title" id="fTitle" maxlength="60" placeholder="例：二楼右侧墙角木桶堆旁" required>
+        <input type="text" name="title" id="fTitle" maxlength="60" required>
       </div>
       <div class="form-group">
         <label>点位描述（选填）</label>
-        <textarea name="description" id="fDesc" rows="3" maxlength="300" placeholder="补充说明该点位，可用 #标签 标记（如 #果盘 #墙角）"></textarea>
+        <textarea name="description" id="fDesc" rows="3" maxlength="300"></textarea>
       </div>
       <div class="form-group">
         <label>点位图片（PNG，可多选）</label>
