@@ -77,7 +77,7 @@
 
   function renderView(st) {
     if (!st) st = { v: 'cats' };
-    if (st.v === 'submit') return;   // 投稿弹窗标记状态：不渲染，仅用于返回键关闭弹窗
+    if (st.__modal) return;   // 投稿弹窗标记状态：不渲染，仅用于返回键关闭弹窗
     if (st.v === 'maps') showMaps(st.l1);
     else if (st.v === 'groups') showGroups(st.l1, st.l2);
     else if (st.v === 'points') showPoints(st);
@@ -85,12 +85,18 @@
   }
 
   window.addEventListener('popstate', () => {
-    // 投稿弹窗打开时按手机返回键：仅关闭弹窗，不改变当前浏览层级
-    if (!submitModal.hidden) {
-      closeSubmitModal();
+    // 关闭弹窗时我们主动 history.back() 清理标记：本次事件只清栈、不渲染视图
+    if (modalCloseCleanup) {
+      modalCloseCleanup = false;
       return;
     }
-    renderView(history.state);
+    const st = history.state;
+    if (st && st.__modal) return;          // 返回键刚把标记弹掉：保持当前视图
+    if (!submitModal.hidden) {
+      closeSubmitModal();                  // 弹窗打开时按返回键：仅关闭弹窗，不退出当前层级
+      return;
+    }
+    renderView(st);
   });
 
   /* ---------------- 视图渲染 ---------------- */
@@ -432,7 +438,8 @@
   const submitModal = $('#submitModal');
   const fCat = $('#fCat'), fGroup = $('#fGroup'), fMapList = $('#fMapList');
   const fabSubmit = $('#fabSubmit');
-  let submitPrevState = null;   // 打开投稿弹窗前的视图状态（用于返回键关闭清理）
+  let modalOpening = false;       // 弹窗打开中（防止重复压入返回标记）
+  let modalCloseCleanup = false;  // 关闭时正在清理标记（popstate 触发后跳过渲染）
 
   function renderMapChecks(maps, container, checked) {
     container.innerHTML = maps.map((m) => `
@@ -498,9 +505,9 @@
     $('#formMsg').hidden = true;
     $('#formMsg').className = 'form-msg';
     // 压入标记状态：手机端点开投稿后按返回键时，先关闭弹窗而不是退出页面
-    if (submitPrevState === null) {
-      submitPrevState = history.state || { v: 'cats' };
-      history.pushState({ v: 'submit' }, '');
+    if (!modalOpening) {
+      modalOpening = true;
+      history.pushState({ __modal: true }, '');
     }
     try {
       await ensureCatsLoaded();
@@ -519,13 +526,19 @@
     }
   }
 
-  // 关闭投稿弹窗（✕/遮罩/返回键共用），并清理返回键标记状态
+  // 关闭投稿弹窗（✕/遮罩/返回键/投稿成功自动关闭 共用）
   function closeSubmitModal() {
     if (submitModal.classList.contains('closing')) return;   // 动画进行中，避免重复关闭
     submitModal.classList.add('closing');
-    if (submitPrevState !== null) {
-      history.replaceState(submitPrevState, '');
-      submitPrevState = null;
+    // 清理返回键标记：若当前在标记上则回退弹出它，保持历史栈不残留重复条目
+    // （不能用 replaceState 替换成旧视图——那会在栈里复制一份当前视图，多次投稿后
+    //   左滑返回会一次次回到同一个页面，表现为“卡在当前界面退不出去”）
+    if (modalOpening) {
+      modalOpening = false;
+      if (history.state && history.state.__modal) {
+        modalCloseCleanup = true;
+        history.back();
+      }
     }
     // 等淡出动画播完再真正隐藏并解锁滚动
     setTimeout(() => {
