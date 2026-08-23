@@ -413,12 +413,11 @@ button { font-family: inherit; cursor: pointer; }
   box-shadow: var(--wiki-shadow-card);
   overflow: hidden;
   text-align: left;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .cat-card:hover {
   border-color: #93c5fd;
   box-shadow: var(--wiki-shadow-card-hover);
-  transform: translateY(-4px);
 }
 .dark .cat-card:hover { border-color: #3b82f6; }
 .cat-card.active {
@@ -511,12 +510,11 @@ button { font-family: inherit; cursor: pointer; }
   box-shadow: var(--wiki-shadow-card);
   overflow: hidden;
   text-align: left;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .map-card:hover {
   border-color: #93c5fd;
   box-shadow: var(--wiki-shadow-card-hover);
-  transform: translateY(-4px);
 }
 .dark .map-card:hover { border-color: #3b82f6; }
 .map-card.active {
@@ -611,12 +609,11 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--wiki-foreground);
   cursor: pointer;
   border: 1px solid transparent;
-  transition: border-color 0.2s ease, box-shadow 0.2s ease, transform 0.2s ease;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 .point-card:hover {
   border-color: #93c5fd;
   box-shadow: var(--wiki-shadow-card-hover);
-  transform: translateY(-4px);
 }
 .dark .point-card:hover { border-color: #3b82f6; }
 
@@ -1341,6 +1338,16 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--wiki-muted-foreground);
   text-align: center;
 }
+
+/* 后台管理入口：低调融入版权行，不打扰普通访客 */
+.footer-admin {
+  color: inherit;
+  text-decoration: none;
+  margin-left: 8px;
+  opacity: 0.55;
+  transition: opacity 0.2s ease;
+}
+.footer-admin:hover { opacity: 1; }
 
 /* ---------------- 右下角投稿卡片 ---------------- */
 
