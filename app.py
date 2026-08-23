@@ -1,7 +1,6 @@
 # -*- coding: utf-8 -*-
 """猫和老鼠手游 点位查询网站 后端"""
 
-import io
 import json
 import os
 import re
@@ -20,7 +19,6 @@ from flask import (
     url_for,
     session,
     jsonify,
-    send_from_directory,
 )
 from flask_cors import CORS
 from PIL import Image
@@ -150,7 +148,7 @@ def get_maps_for_l1_l2(l1, l2):
 # thumb = 主题缩略图；full = 整图
 # ---------------------------------------------------------------------------
 
-# 主题族缩略图（I/II/III 变体共用主题图）
+# 主题族缩略图（I/II/III 变体共用主题图；天宫-云上 有独立主题图）
 _THEME_THUMBS = {
     "经典之家": "经典之家.png",
     "雪夜古堡": "雪夜古堡.png",
@@ -162,25 +160,38 @@ _THEME_THUMBS = {
     "熊猫馆": "熊猫馆.png",
     "御门酒店": "御门酒店.png",
     "天宫": "天宫.png",
+    "天宫-云上": "天宫-云上.png",
 }
 
-# 天宫-云上 有独立主题图
-_THEME_THUMBS["天宫-云上"] = "天宫-云上.png"
+# 地图静态图片目录（绝对路径）与对外 URL 前缀
+_MAP_IMAGES_DIR = os.path.join(BASE_DIR, "static", "images", "maps")
+_MAP_IMAGES_URL = "/static/images/maps"
+
+
+def _map_asset(filename):
+    """返回 /static/images/maps/<filename>；文件缺失则返回空串，前端据此隐藏占位/横幅。"""
+    if not filename:
+        return ""
+    return (
+        f"{_MAP_IMAGES_URL}/{filename}"
+        if os.path.exists(os.path.join(_MAP_IMAGES_DIR, filename))
+        else ""
+    )
 
 
 def get_map_images(map_name):
-    """返回 {thumb, full} 静态图片路径（/static/images/maps/ 下）。"""
-    # 缩略图：变体（I/II/III）继承主题族缩略图
-    thumb = _THEME_THUMBS.get(map_name)
-    if thumb is None:
+    """返回 {thumb, full} 静态图片路径（/static/images/maps/ 下）。
+    缩略图：变体（I/II/III）继承主题族缩略图；整图：<地图名>-地图.png。
+    任一图片缺失则对应字段为空串，前端隐藏横幅/占位，避免显示裂图。"""
+    thumb_file = _THEME_THUMBS.get(map_name)
+    if thumb_file is None:
         for group, maps in L2_GROUPS.items():
             if map_name in maps:
-                thumb = _THEME_THUMBS.get(group)
+                thumb_file = _THEME_THUMBS.get(group)
                 break
-    full = f"{map_name}-地图.png"
     return {
-        "thumb": f"/static/images/maps/{thumb}" if thumb else "",
-        "full": f"/static/images/maps/{full}" if full else "",
+        "thumb": _map_asset(thumb_file),
+        "full": _map_asset(f"{map_name}-地图.png"),
     }
 
 
@@ -293,7 +304,9 @@ def process_image(file_storage):
     thumb_path = os.path.join(config.THUMBS_DIR, name + ".png")
     thumb.save(os.path.join(BASE_DIR, thumb_path), "PNG")
 
-    return "/static/" + thumb_path.split("/", 1)[1], "/static/" + original_path.split("/", 1)[1]
+    # 直接以正斜杠拼 URL，避免在 Windows 上 os.path.join 产生反斜杠导致 URL 形如
+    # /static/thumbs\xxx.png（依赖浏览器自动归一化才不裂图，移植性差）
+    return f"/{config.THUMBS_DIR}/{name}.png", f"/{config.ORIGINALS_DIR}/{name}.png"
 
 
 # ---------------------------------------------------------------------------
@@ -378,11 +391,23 @@ def send_submitter_email(submitter, to_addr, status, title, reason=""):
 # 鉴权
 # ---------------------------------------------------------------------------
 
+def _admin_request_is_json():
+    """判断当前请求是否为返回 JSON 的接口（而非页面路由）。
+    页面路由仅 /admin（登录页）与 /admin/dashboard（后台页），其余 /admin/* 与
+    全部 /api/* 均返回 JSON：鉴权失败时这些接口应回 JSON 401，而不是 302 重定向到
+    登录页（否则前端 fetch 跟随重定向拿到 HTML、res.json() 抛错，表现为“操作失败”
+    而非“未登录”，与 /admin/pending 已有的 401 处理不一致）。"""
+    if request.path.startswith("/api/"):
+        return True
+    # /admin（无尾斜杠）是登录页；/admin/dashboard 是后台页面 —— 这两个走重定向
+    return request.path.startswith("/admin/") and request.path != "/admin/dashboard"
+
+
 def admin_required(f):
     @wraps(f)
     def wrapper(*args, **kwargs):
         if not session.get("is_admin"):
-            if request.path.startswith("/api/") or request.path == "/admin/pending":
+            if _admin_request_is_json():
                 return jsonify({"ok": False, "error": "未登录"}), 401
             return redirect(url_for("admin_login"))
         return f(*args, **kwargs)
@@ -460,6 +485,21 @@ def _parse_maps(row):
     return maps
 
 
+def _serialize_point(row, include_email=False):
+    """把数据库行转为对外 JSON 对象：解析 images/maps。
+    include_email=False 时剔除 submitter_email（前台点位接口不泄露邮箱），
+    后台接口传 True 以便审核/发邮件。"""
+    item = dict(row)
+    if not include_email:
+        item.pop("submitter_email", None)
+    try:
+        item["images"] = json.loads(item.get("images") or "[]")
+    except (ValueError, TypeError):
+        item["images"] = []
+    item["maps"] = _parse_maps(item)
+    return item
+
+
 @app.route("/api/points")
 def api_points():
     l1 = request.args.get("l1", "").strip()
@@ -476,8 +516,12 @@ def api_points():
         sql += " AND map_group_l2 = ?"
         args.append(l2)
     if l3:
-        # 多地图支持：匹配主地图 map_name_l3 或 maps 列表中的任一地图
-        sql += " AND (map_name_l3 = ? OR instr(maps, json_quote(?)) > 0)"
+        # 多地图支持：匹配主地图 map_name_l3 或 maps 数组中的任一地图
+        # （用 json_each 精确匹配元素，避免 instr(json_quote) 子串误命中的隐患）
+        sql += (
+            " AND (map_name_l3 = ? OR EXISTS "
+            "(SELECT 1 FROM json_each(maps) WHERE value = ?))"
+        )
         args += [l3, l3]
     sql += " ORDER BY id DESC"
 
@@ -485,56 +529,78 @@ def api_points():
     rows = conn.execute(sql, args).fetchall()
     conn.close()
 
-    data = [dict(r) for r in rows]
-    for item in data:
-        item.pop("submitter_email", None)
-        try:
-            item["images"] = json.loads(item.get("images") or "[]")
-        except (ValueError, TypeError):
-            item["images"] = []
-        item["maps"] = _parse_maps(item)
+    data = [_serialize_point(r, include_email=False) for r in rows]
     return jsonify({"ok": True, "data": data})
+
+
+def _validate_submission(form):
+    """校验并归一化投稿/编辑表单的公共字段（分类/主题/地图/标题/描述/投稿人/邮箱）。
+
+    成功返回 (payload, None)；失败返回 (None, error_message)（调用方按 400 返回）。
+    payload 字段：category_l1, map_group_l2, map_name_l3(主地图), maps(JSON 字符串),
+                  title, description, submitter, submitter_email, tags(由描述提取)。
+    图片相关校验仅投稿接口需要，留在 api_submit 内单独处理。
+    """
+    category_l1 = form.get("category_l1", "").strip()
+    map_group_l2 = form.get("map_group_l2", "").strip()
+    # 具体地图多选（兼容旧的单值 map_name_l3）
+    map_names = [m.strip() for m in form.getlist("map_names_l3") if m.strip()]
+    if not map_names:
+        single = form.get("map_name_l3", "").strip()
+        if single:
+            map_names = [single]
+    title = form.get("title", "").strip()
+    description = form.get("description", "").strip()
+    submitter = form.get("submitter", "").strip()
+    submitter_email = form.get("submitter_email", "").strip()
+
+    if category_l1 not in L1_CATEGORIES:
+        return None, "请选择有效的分类"
+    if map_group_l2 not in L2_GROUPS:
+        return None, "请选择有效的地图主题"
+    if not map_names:
+        return None, "请至少选择一个具体地图"
+    for m in map_names:
+        if m not in L2_GROUPS[map_group_l2]:
+            return None, f"地图「{m}」不属于该主题"
+    if not title:
+        return None, "请填写标题"
+    if len(title) > 60:
+        return None, "标题最长 60 字"
+    if len(description) > 300:
+        return None, "点位描述最长 300 字"
+    if not submitter:
+        return None, "请填写投稿人"
+    if len(submitter) > 30:
+        return None, "投稿人昵称最长 30 字"
+    if not submitter_email:
+        return None, "请填写投稿人邮箱"
+    if not re.match(r"^[\w.\-+]+@[\w\-]+(\.[\w\-]+)+$", submitter_email):
+        return None, "邮箱格式不正确"
+
+    # 去重并保持选择顺序；map_name_l3 记主地图（第一个）
+    seen = set()
+    maps_deduped = [m for m in map_names if not (m in seen or seen.add(m))]
+    return {
+        "category_l1": category_l1,
+        "map_group_l2": map_group_l2,
+        "map_name_l3": maps_deduped[0],
+        "maps": json.dumps(maps_deduped, ensure_ascii=False),
+        "title": title,
+        "description": description,
+        "submitter": submitter,
+        "submitter_email": submitter_email,
+        "tags": _extract_tags(description),
+    }, None
 
 
 @app.route("/api/submit", methods=["POST"])
 def api_submit():
-    category_l1 = request.form.get("category_l1", "").strip()
-    map_group_l2 = request.form.get("map_group_l2", "").strip()
-    # 具体地图多选（兼容旧的单值 map_name_l3）
-    map_names = [m.strip() for m in request.form.getlist("map_names_l3") if m.strip()]
-    if not map_names:
-        single = request.form.get("map_name_l3", "").strip()
-        if single:
-            map_names = [single]
-    title = request.form.get("title", "").strip()
-    description = request.form.get("description", "").strip()
-    submitter = request.form.get("submitter", "").strip()
-    submitter_email = request.form.get("submitter_email", "").strip()
-    files = [f for f in request.files.getlist("images") if f and f.filename]
+    payload, err = _validate_submission(request.form)
+    if err:
+        return jsonify({"ok": False, "error": err}), 400
 
-    if category_l1 not in L1_CATEGORIES:
-        return jsonify({"ok": False, "error": "请选择有效的分类"}), 400
-    if map_group_l2 not in L2_GROUPS:
-        return jsonify({"ok": False, "error": "请选择有效的地图主题"}), 400
-    if not map_names:
-        return jsonify({"ok": False, "error": "请至少选择一个具体地图"}), 400
-    for m in map_names:
-        if m not in L2_GROUPS[map_group_l2]:
-            return jsonify({"ok": False, "error": f"地图「{m}」不属于该主题"}), 400
-    if not title:
-        return jsonify({"ok": False, "error": "请填写标题"}), 400
-    if len(title) > 60:
-        return jsonify({"ok": False, "error": "标题最长 60 字"}), 400
-    if len(description) > 300:
-        return jsonify({"ok": False, "error": "点位描述最长 300 字"}), 400
-    if not submitter:
-        return jsonify({"ok": False, "error": "请填写投稿人"}), 400
-    if len(submitter) > 30:
-        return jsonify({"ok": False, "error": "投稿人昵称最长 30 字"}), 400
-    if not submitter_email:
-        return jsonify({"ok": False, "error": "请填写投稿人邮箱"}), 400
-    if not re.match(r"^[\w.\-+]+@[\w\-]+(\.[\w\-]+)+$", submitter_email):
-        return jsonify({"ok": False, "error": "邮箱格式不正确"}), 400
+    files = [f for f in request.files.getlist("images") if f and f.filename]
     if not files:
         return jsonify({"ok": False, "error": "请上传至少一张点位图片(PNG)"}), 400
     if len(files) > 9:
@@ -551,33 +617,24 @@ def api_submit():
             return jsonify({"ok": False, "error": "图片处理失败，请重试"}), 500
         images.append({"thumb": thumb_url, "original": original_url})
 
-    thumb_url = images[0]["thumb"]
-    original_url = images[0]["original"]
     images_json = json.dumps(images, ensure_ascii=False)
-
-    # 描述中的 #标签 -> tags 列（如 #果盘 #墙角）
-    tags = _extract_tags(description)
-
-    # 去重并保持选择顺序；map_name_l3 记主地图（第一个）
-    seen = set()
-    maps_deduped = [m for m in map_names if not (m in seen or seen.add(m))]
-    map_name_l3 = maps_deduped[0]
-    maps_json = json.dumps(maps_deduped, ensure_ascii=False)
 
     conn = get_db()
     cur = conn.execute(
         "INSERT INTO points (category_l1, map_group_l2, map_name_l3, maps, title, description, "
         "tags, submitter, thumb_url, original_url, images, status, submitter_email, created_at) "
         "VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending', ?, datetime('now', 'localtime'))",
-        (category_l1, map_group_l2, map_name_l3, maps_json, title, description, tags, submitter,
-         thumb_url, original_url, images_json, submitter_email),
+        (payload["category_l1"], payload["map_group_l2"], payload["map_name_l3"],
+         payload["maps"], payload["title"], payload["description"], payload["tags"],
+         payload["submitter"], images[0]["thumb"], images[0]["original"], images_json,
+         payload["submitter_email"]),
     )
     conn.commit()
     pid = cur.lastrowid
     conn.close()
 
-    send_notify_email(title, submitter, submitter_email)
-    send_submitter_email(submitter, submitter_email, "submitted", title)
+    send_notify_email(payload["title"], payload["submitter"], payload["submitter_email"])
+    send_submitter_email(payload["submitter"], payload["submitter_email"], "submitted", payload["title"])
 
     return jsonify({"ok": True, "message": "投稿成功，审核通过后将展示", "id": pid}), 200
 
@@ -611,13 +668,7 @@ def admin_pending():
         "SELECT * FROM points WHERE status = ? ORDER BY id DESC", (status,)
     ).fetchall()
     conn.close()
-    data = [dict(r) for r in rows]
-    for item in data:
-        try:
-            item["images"] = json.loads(item.get("images") or "[]")
-        except (ValueError, TypeError):
-            item["images"] = []
-        item["maps"] = _parse_maps(item)
+    data = [_serialize_point(r, include_email=True) for r in rows]
     return jsonify({"ok": True, "data": data})
 
 
@@ -706,56 +757,17 @@ def admin_edit(point_id):
     if not row:
         return jsonify({"ok": False, "error": "记录不存在"}), 404
 
-    category_l1 = request.form.get("category_l1", "").strip()
-    map_group_l2 = request.form.get("map_group_l2", "").strip()
-    # 具体地图多选（兼容旧的单值 map_name_l3）
-    map_names = [m.strip() for m in request.form.getlist("map_names_l3") if m.strip()]
-    if not map_names:
-        single = request.form.get("map_name_l3", "").strip()
-        if single:
-            map_names = [single]
-    title = request.form.get("title", "").strip()
-    description = request.form.get("description", "").strip()
-    submitter = request.form.get("submitter", "").strip()
-    submitter_email = request.form.get("submitter_email", "").strip()
-
-    if category_l1 not in L1_CATEGORIES:
-        return jsonify({"ok": False, "error": "请选择有效的分类"}), 400
-    if map_group_l2 not in L2_GROUPS:
-        return jsonify({"ok": False, "error": "请选择有效的地图主题"}), 400
-    if not map_names:
-        return jsonify({"ok": False, "error": "请至少选择一个具体地图"}), 400
-    for m in map_names:
-        if m not in L2_GROUPS[map_group_l2]:
-            return jsonify({"ok": False, "error": f"地图「{m}」不属于该主题"}), 400
-    if not title:
-        return jsonify({"ok": False, "error": "请填写标题"}), 400
-    if len(title) > 60:
-        return jsonify({"ok": False, "error": "标题最长 60 字"}), 400
-    if len(description) > 300:
-        return jsonify({"ok": False, "error": "点位描述最长 300 字"}), 400
-    if not submitter:
-        return jsonify({"ok": False, "error": "请填写投稿人"}), 400
-    if len(submitter) > 30:
-        return jsonify({"ok": False, "error": "投稿人昵称最长 30 字"}), 400
-    if not submitter_email:
-        return jsonify({"ok": False, "error": "请填写投稿人邮箱"}), 400
-    if not re.match(r"^[\w.\-+]+@[\w\-]+(\.[\w\-]+)+$", submitter_email):
-        return jsonify({"ok": False, "error": "邮箱格式不正确"}), 400
-
-    # 去重并保持选择顺序；map_name_l3 记主地图（第一个）
-    seen = set()
-    maps_deduped = [m for m in map_names if not (m in seen or seen.add(m))]
-    map_name_l3 = maps_deduped[0]
-    maps_json = json.dumps(maps_deduped, ensure_ascii=False)
-    tags = _extract_tags(description)
+    payload, err = _validate_submission(request.form)
+    if err:
+        return jsonify({"ok": False, "error": err}), 400
 
     conn = get_db()
     conn.execute(
         "UPDATE points SET category_l1 = ?, map_group_l2 = ?, map_name_l3 = ?, maps = ?, "
         "title = ?, description = ?, tags = ?, submitter = ?, submitter_email = ? WHERE id = ?",
-        (category_l1, map_group_l2, map_name_l3, maps_json, title, description, tags, submitter,
-         submitter_email, point_id),
+        (payload["category_l1"], payload["map_group_l2"], payload["map_name_l3"],
+         payload["maps"], payload["title"], payload["description"], payload["tags"],
+         payload["submitter"], payload["submitter_email"], point_id),
     )
     conn.commit()
     conn.close()
@@ -774,18 +786,8 @@ def admin_approve_all():
 
 
 # ---------------------------------------------------------------------------
-# 静态图片（统一走 Flask，避免裸目录访问）
+# 上传超限处理（MAX_CONTENT_LENGTH 触发 413）
 # ---------------------------------------------------------------------------
-
-@app.route("/static/originals/<path:filename>")
-def serve_original(filename):
-    return send_from_directory(os.path.join(BASE_DIR, "static", "originals"), filename)
-
-
-@app.route("/static/thumbs/<path:filename>")
-def serve_thumb(filename):
-    return send_from_directory(os.path.join(BASE_DIR, "static", "thumbs"), filename)
-
 
 @app.errorhandler(413)
 def too_large(e):
