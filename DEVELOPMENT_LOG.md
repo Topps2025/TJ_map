@@ -153,3 +153,49 @@
 - 投稿含 `#果盘 #墙角 #果盘` → tags 存为 `果盘 墙角`（去重）
 - 后台编辑描述后 tags 同步更新；拒绝邮件正文在有/无原因两种情况下均正确
 - `/admin/reject` 带 reason 实测返回成功；favicon 路由 200
+
+---
+
+## 后端审查与重构（交互逻辑修正 + 去重，分支 refactor/backend-interaction-review）
+
+> 先 `git fetch --all` + 拉取远端，再从 `feat/tjwiki-card-redesign` 切出本分支，仅动后端 `app.py`（前端未改）。
+
+### 一、交互逻辑修正（真实缺陷）
+
+1. **`process_image` 在 Windows 生成含反斜杠的图片 URL**
+   - 原实现 `"/static/" + thumb_path.split("/", 1)[1]`：`thumb_path = os.path.join("static/thumbs", name+".png")` 在 Windows 上为 `static/thumbs\xxx.png`，split 后拼出 `/static/thumbs\xxx.png`，靠浏览器自动归一化才不裂图，移植性差。
+   - 改为直接 `f"/{config.THUMBS_DIR}/{name}.png"` / `f"/{config.ORIGINALS_DIR}/{name}.png"`，纯正斜杠、与操作系统无关。
+2. **`admin_required` 鉴权失败对后台 JSON 接口返回 302 而非 JSON 401**
+   - 原仅对 `/api/*` 与 `/admin/pending` 回 JSON 401，其余 `/admin/approve|reject|delete|edit|approve_all` 会 302 跳登录页；前端 `fetch` 跟随重定向拿到 HTML、`res.json()` 抛错，表现为“操作失败”而非“未登录”，与 `/admin/pending` 已有 401 处理不一致。
+   - 抽出 `_admin_request_is_json()`：除 `/admin`（登录页）与 `/admin/dashboard`（后台页）两个页面路由走重定向外，其余 `/admin/*` 与 `/api/*` 一律回 JSON 401。
+3. **`get_map_images` 的 `full` 恒为非空，缺图时前端显示裂图横幅**
+   - 原 `full = f"{map_name}-地图.png"` 恒真，返回值永远带 URL；前端 `showPoints` 据 `info.full` 真值决定是否显示横幅，故任意新增无整图的地图都会裂图。
+   - 新增 `_map_asset()`：基于 `os.path.exists` 校验，缺失则返回空串，前端据此隐藏横幅/占位；`thumb` 同样走该校验。当前 19 张整图齐备，无可见变化，仅为后续扩展兜底。
+4. **`api_points` 多地图匹配由 `instr(json_quote)` 子串匹配改为 `json_each` 精确匹配**
+   - 原依赖 `instr(maps, json_quote(?))` 在 JSON 串里找带引号子串，逻辑脆弱；改用 `EXISTS (SELECT 1 FROM json_each(maps) WHERE value = ?)` 精确匹配数组元素，彻底消除子串误命中的隐患。
+
+### 二、去重（消除臃肿）
+
+- 抽出 `_validate_submission(form)`：`/api/submit` 与 `/admin/edit` 原各有一份 ~40 行近乎逐字相同的校验（分类/主题/地图多选/标题/描述/投稿人/邮箱 + 去重 + tags 提取），合并为单一来源，两处各自只剩调用 + 图片相关逻辑。
+- 抽出 `_serialize_point(row, include_email)`：`/api/points`（剔除邮箱）与 `/admin/pending`（保留邮箱）原各有一段 images/maps 解析，合并；以 `include_email` 区分前台/后台是否泄露 `submitter_email`。
+- 移除冗余的 `/static/originals/<path>` 与 `/static/thumbs/<path>` 自定义路由：Flask 默认已对 `static/` 目录提供 `/static/<path:filename>` 服务，二者等价，属重复代码；同时清理未用导入 `io`、`send_from_directory`。
+- 将 `_THEME_THUMBS["天宫-云上"] = ...` 的后置赋值并入字典字面量。
+
+### 三、验证（Flask test client + 临时库，不碰真实 database.db）
+
+- `/api/categories`、`/api/groups`、`/api/maps`、`/api/points` 200 且结构正确（thumb/full 齐备）。
+- 鉴权一致性：`/admin/pending`、`/admin/approve/<id>`、`/admin/delete/<id>` 未登录均回 401 JSON；`/admin/dashboard` 未登录回 302 → `/admin`；登录后 `/admin/pending` 200。
+- `get_map_images`：存在地图返回路径，不存在地图返回 `{"thumb":"","full":""}`。
+- `_validate_submission`：有效返回 payload（含 maps 去重保序、主地图取首个）；无效邮箱/分类返回对应错误。
+- `process_image`：返回 URL 无反斜杠（Windows 关键），临时图片已清理。
+- `json_each` 多地图：一条 `maps=["经典之家II","经典之家III"]` 的点位，按 `l3=经典之家I/II/III` 各命中 1 条，`l3=游乐场` 命中 0 条（精确无误命中）。
+- `/api/submit` 无图回 400。
+- 默认静态服务确认：移除自定义路由后 `/static/css|js|images/...` 仍 200。
+- `python -m py_compile app.py` 通过。
+
+### 四、未改动的已知点（产品/范围决策，留待后续）
+
+- `/admin/approve_all` 批量通过不发邮件（区别于单条 approve），属既有产品取舍，未改。
+- 状态变更 POST 接口无 CSRF 令牌；Flask session cookie 浏览器默认 SameSite=Lax 已提供基础缓解，完整 CSRF 防护需前后端协同，超出“重构后端”范围，未引入。
+- `config.THUMB_QUALITY` 当前未使用（PNG 无质量参数），未动配置。
+
