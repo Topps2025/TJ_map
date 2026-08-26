@@ -198,6 +198,7 @@
   }
 
   function showGroupsView(l1, l2, maps) {
+    state.l3 = '';   // 主题（地图大类）层不预选具体地图，投稿时让用户自行勾选
     layer1.hidden = true;
     layer2.hidden = true;
     layer3.hidden = false;

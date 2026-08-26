@@ -28,14 +28,13 @@ TJ_map/
 ├── app.py                  # 全部后端逻辑：路由、API、图片处理、邮件、鉴权
 ├── config.py               # 配置（gitignore，必须自行创建，见下文「配置文件」）
 ├── requirements.txt        # Python 依赖
-├── seed_demo.py            # 可选：生成 12 条演示点位（幂等）
 ├── database.db             # SQLite 数据库（首次启动自动创建，gitignore）
 ├── static/
 │   ├── css/style.css       # 全局样式（含深色模式）
 │   ├── js/main.js          # 前端逻辑（三级联动、投稿、后台）
 │   ├── js/theme.js         # 深色模式
 │   ├── images/maps/*.png   # 地图静态图（已入库）
-│   ├── images/mice/*.png   # 分类老鼠图标（⚠️ 当前未入库，克隆后需自备）
+│   ├── images/mice/*.png   # 分类老鼠图标（已入库）
 │   ├── originals/          # 投稿原图（gitignore，保留 .gitkeep）
 │   └── thumbs/             # 投稿缩略图（gitignore，保留 .gitkeep）
 └── templates/              # 纯 HTML 模板（无 Jinja）
@@ -66,14 +65,6 @@ python app.py
 ```
 
 访问 `http://127.0.0.1:5000`。
-
-### 可选：写入演示数据
-
-```bash
-python seed_demo.py
-```
-
-生成 12 条已审核的占位点位（需 Pillow）。脚本幂等——数据库中已有任何点位时自动跳过。
 
 ## 配置文件
 
@@ -193,7 +184,7 @@ sudo nginx -t && sudo systemctl reload nginx
   - `L1_CATEGORIES`：一级分类；`L1_CATEGORY_ICONS`：分类图标；`L1_CATEGORY_INFO`：分类介绍页文案
   - `L2_GROUPS`：二级地图主题 → 三级具体地图的映射
   - `L1_CATEGORY_MIGRATE`：历史分类改名迁移（启动时自动改写存量数据）
-- `static/images/mice/*.png`（分类老鼠图标）**未纳入 git**，克隆仓库后需要自行补齐，否则首页分类无图标
+- `static/images/mice/*.png`（分类老鼠图标）已随仓库入库，克隆即用
 - 其他 schema 变更无迁移工具：`init_db()` 只能自动**新增列**（`PRAGMA table_info` + `ALTER TABLE`），改动或删除列需要手动删除 `database.db` 重建
 
 ## 后台管理
@@ -210,9 +201,6 @@ sudo nginx -t && sudo systemctl reload nginx
 
 **Q：启动报错 `ModuleNotFoundError: No module named 'config'`**
 A：缺少 `config.py`。参照「配置文件」一节手动创建（或复制 `config.example.py`），然后重启。
-
-**Q：首页分类没有图标**
-A：`static/images/mice/` 下的图标文件未入库，从 tjwiki 仓库 `public/images/mice/` 拷贝对应文件即可。
 
 **Q：数据库结构变了，但老数据还在？**
 A：`init_db()` 只做新增列迁移。涉及列改名/删除时，删除 `database.db` 重新初始化（数据会丢失，注意先备份）。
