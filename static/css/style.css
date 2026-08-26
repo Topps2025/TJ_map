@@ -1082,6 +1082,26 @@ button { font-family: inherit; cursor: pointer; }
 
 .admin-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
 
+/* 后台分类筛选条（一级分类 / 地图主题） */
+.admin-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.admin-filters select {
+  padding: 7px 12px;
+  font-size: 13px;
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--radius-md);
+  background: var(--wiki-surface);
+  color: var(--wiki-foreground);
+  cursor: pointer;
+}
+.admin-filters select:disabled { opacity: 0.5; cursor: not-allowed; }
+.admin-filters select option { color: var(--wiki-foreground); background: var(--wiki-surface); }
+
 .admin-list { display: flex; flex-direction: column; gap: 12px; }
 
 .admin-card {

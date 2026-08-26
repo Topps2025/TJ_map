@@ -343,7 +343,7 @@
   // 加载指定范围（分类 l1 或 分类+主题 l1+l2）的已审核点位，最多展示 PREVIEW_MAX 条；
   // 无数据时隐藏预览区块。block 未挂载或加载失败均静默隐藏。
   // key 为令牌标识：同一 key 的新请求会使旧请求结果作废，防止快速切换时串页。
-  const PREVIEW_MAX = 8;
+  const PREVIEW_MAX = 3;
   const previewTokens = {};
 
   async function loadPreview(url, grid, block, key) {

@@ -42,6 +42,17 @@
     <button class="chip" data-status="approved">已审核</button>
   </nav>
 
+  <!-- 分类筛选条：按 一级分类 / 地图主题 筛选投稿，方便快速定位 -->
+  <div class="admin-filters">
+    <select id="filterCat" aria-label="按分类筛选">
+      <option value="">全部分类</option>
+    </select>
+    <select id="filterGroup" aria-label="按地图主题筛选" disabled>
+      <option value="">全部主题</option>
+    </select>
+    <button type="button" class="btn-ghost" id="filterReset">重置</button>
+  </div>
+
   <!-- 列表视图 -->
   <section id="listPanel">
     <div class="list-toolbar">
@@ -119,6 +130,9 @@ const listEl = $('#adminList');
 const labelEl = $('#listLabel');
 const approveAllBtn = $('#approveAllBtn');
 const listPanel = $('#listPanel');
+const filterCat = $('#filterCat');
+const filterGroup = $('#filterGroup');
+const filterReset = $('#filterReset');
 
 function esc(s) {
   const d = document.createElement('div');
@@ -151,7 +165,12 @@ async function loadList(status) {
   listEl.innerHTML = '<div class="loading-text">加载中...</div>';
   labelEl.textContent = status === 'pending' ? '待审核条目' : '已审核条目';
 
-  const res = await fetch('/admin/pending?status=' + status);
+  // 拼接筛选参数（分类 / 主题），请求后台接口
+  const params = new URLSearchParams({ status });
+  if (filterCat.value) params.set('category_l1', filterCat.value);
+  if (filterGroup.value) params.set('map_group_l2', filterGroup.value);
+
+  const res = await fetch('/admin/pending?' + params.toString());
   if (res.status === 401) { location.href = '/admin'; return; }
   const data = await res.json();
   if (!data.ok) { listEl.innerHTML = '<div class="loading-text">加载失败</div>'; return; }
@@ -433,6 +452,57 @@ approveAllBtn.addEventListener('click', async () => {
     else if (e.key === 'Escape') closeLb();
   });
 
+/* ---------------- 分类筛选：按 分类/地图主题 筛选取稿 ----------------
+     复用前台 /api/categories 与 /api/groups 接口联动，只做展示不做提交。 */
+
+  // 加载一级分类下拉（“全部分类” + 各分类）
+  async function loadFilterCats() {
+    try {
+      const cats = await getJSON('/api/categories');
+      filterCat.innerHTML = '<option value="">全部分类</option>' +
+        cats.map(c => `<option value="${esc(c.name)}">${esc(c.name)}</option>`).join('');
+    } catch (e) {
+      filterCat.innerHTML = '<option value="">全部分类</option>';
+    }
+  }
+
+  // 按当前分类加载主题下拉（“全部主题” + 该分类下可用主题）
+  async function loadFilterGroups(cat) {
+    filterGroup.disabled = true;
+    filterGroup.innerHTML = '<option value="">全部主题</option>';
+    if (!cat) return;
+    try {
+      const groups = await getJSON('/api/groups?l1=' + encodeURIComponent(cat));
+      filterGroup.innerHTML = '<option value="">全部主题</option>' +
+        groups.map(g => `<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('');
+      filterGroup.disabled = false;
+    } catch (e) {
+      filterGroup.innerHTML = '<option value="">全部主题</option>';
+    }
+  }
+
+  // 分类切换：重置主题选择并刷新列表
+  filterCat.addEventListener('change', () => {
+    filterGroup.value = '';
+    filterGroup.disabled = true;
+    loadFilterGroups(filterCat.value);
+    loadList(currentStatus);
+  });
+
+  // 主题切换：直接刷新列表
+  filterGroup.addEventListener('change', () => loadList(currentStatus));
+
+  // 重置筛选：清空分类/主题，回到全量列表
+  filterReset.addEventListener('click', () => {
+    filterCat.value = '';
+    filterGroup.value = '';
+    filterGroup.disabled = true;
+    filterGroup.innerHTML = '<option value="">全部主题</option>';
+    loadList(currentStatus);
+  });
+
+loadFilterCats();
+loadFilterGroups('');
 loadList('pending');
 </script>
 </body>

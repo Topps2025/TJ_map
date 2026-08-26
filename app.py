@@ -662,11 +662,23 @@ def admin_logout():
 @app.route("/admin/pending")
 @admin_required
 def admin_pending():
+    """后台列表：按 status（pending/approved）过滤，支持可选 category_l1、map_group_l2 进一步筛选。"""
     status = request.args.get("status", "pending")
+    category_l1 = request.args.get("category_l1", "").strip()
+    map_group_l2 = request.args.get("map_group_l2", "").strip()
+
+    sql = "SELECT * FROM points WHERE status = ?"
+    args = [status]
+    if category_l1:
+        sql += " AND category_l1 = ?"
+        args.append(category_l1)
+    if map_group_l2:
+        sql += " AND map_group_l2 = ?"
+        args.append(map_group_l2)
+    sql += " ORDER BY id DESC"
+
     conn = get_db()
-    rows = conn.execute(
-        "SELECT * FROM points WHERE status = ? ORDER BY id DESC", (status,)
-    ).fetchall()
+    rows = conn.execute(sql, args).fetchall()
     conn.close()
     data = [_serialize_point(r, include_email=True) for r in rows]
     return jsonify({"ok": True, "data": data})

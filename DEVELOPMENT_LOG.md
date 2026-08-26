@@ -199,3 +199,27 @@
 - 状态变更 POST 接口无 CSRF 令牌；Flask session cookie 浏览器默认 SameSite=Lax 已提供基础缓解，完整 CSRF 防护需前后端协同，超出“重构后端”范围，未引入。
 - `config.THUMB_QUALITY` 当前未使用（PNG 无质量参数），未动配置。
 
+---
+
+## 投稿预览精简 + 后台分类筛选（基于 main，直接提交）
+
+> 前置：远端已合并 PR #1/PR #2，仓库收拢为单一 `main` 分支（多余分支已清理）。
+
+### 一、投稿预览最多 3 条
+
+- `static/js/main.js`：`PREVIEW_MAX` 由 `8` 改为 `3`（分类页/主题页“投稿预览”更克制，避免喧宾夺主）。
+
+### 二、后台管理界面按分类筛选
+
+- **后端** `app.py` `/admin/pending`：新增可选查询参数 `category_l1`（一级分类）与 `map_group_l2`（地图主题），与 `status` 组合过滤；不传则保持全量，参数化查询无注入风险。
+- **前端** `templates/admin_dashboard.html`：
+  - 标签下方新增“分类筛选条”（`.admin-filters`：分类下拉 + 主题下拉 + 重置按钮）
+  - 分类/主题下拉复用前台 `/api/categories`、`/api/groups` 接口联动（选了分类才启用主题）
+  - 改 `loadList`：按当前筛选拼接 `category_l1`/`map_group_l2` 参数请求；切换分类/主题/重置即时刷新列表
+- **样式** `static/css/style.css`：新增 `.admin-filters`（下拉框与 `.chip`/`.form-group select` 同风格，深色模式变量自适应）。
+
+### 三、验证
+
+- `python -m py_compile app.py` 通过；`node --check static/js/main.js` 通过；`admin_dashboard.html` 内联 JS 语法 OK。
+- 后端筛选实测（test client + 临时库）：pending 3 条 → 按分类筛出 2 条 → 分类+主题筛出 1 条 → 不存在主题 0 条 → approved 0 条，全部符合预期。
+
