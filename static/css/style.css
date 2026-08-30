@@ -1296,7 +1296,8 @@ button { font-family: inherit; cursor: pointer; }
   margin-top: 6px;
 }
 
-/* 站点磁贴（tjwiki ActionTile：网易官方资源） */
+/* 站点磁贴（tjwiki ActionTile：网易官方资源）
+   ActionTile stacked：bg-gray-200 / dark:bg-slate-700，hover 变蓝底白字并上浮 */
 .footer-sites-wrap { margin-top: 30px; text-align: center; }
 .footer-sites-title {
   font-family: var(--font-display-stack);
@@ -1316,22 +1317,31 @@ button { font-family: inherit; cursor: pointer; }
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 6px;
-  width: 132px;
-  padding: 14px 10px;
-  background: var(--wiki-surface);
-  border: 1px solid var(--wiki-border);
-  border-radius: 10px;
-  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  justify-content: center;
+  gap: 8px;
+  min-width: 180px;
+  padding: 16px 24px;
+  background: #e5e7eb; /* gray-200 */
+  color: #1f2937;      /* gray-800 */
+  border-radius: 6px;  /* rounded-md */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  text-align: center;
   text-decoration: none;
-  transition: box-shadow 0.2s ease, transform 0.2s ease;
+  transition: background-color 0.3s ease, color 0.3s ease,
+    transform 0.3s ease, box-shadow 0.3s ease;
+}
+.dark .site-tile {
+  background: #334155; /* slate-700 */
+  color: #e2e8f0;      /* slate-200 */
 }
 .site-tile:hover {
-  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.12);
-  transform: translateY(-2px);
+  background: var(--wiki-primary); /* blue-600 */
+  color: #fff;
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
-.site-tile-icon { width: 30px; height: 30px; color: var(--wiki-primary); }
-.site-tile-name { font-size: 14px; font-weight: 600; color: var(--wiki-foreground); }
+.site-tile-icon { width: 32px; height: 32px; color: currentColor; }
+.site-tile-name { font-size: 20px; font-weight: 700; color: inherit; }
 
 .footer-list { list-style: none; }
 .footer-list li {
@@ -1358,6 +1368,16 @@ button { font-family: inherit; cursor: pointer; }
   color: var(--wiki-muted-foreground);
   text-align: center;
 }
+
+/* 备案信息：ICP 备案号（工信部链接）+ 公安备案（如配置） */
+.footer-icp {
+  display: inline-block;
+  margin: 0 8px;
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.footer-icp:hover { color: var(--wiki-primary); }
 
 /* 后台管理入口：低调融入版权行，不打扰普通访客 */
 .footer-admin {
