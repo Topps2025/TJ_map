@@ -59,7 +59,7 @@
     </div>
     <!-- 分类投稿预览：点入分类即展示该分类下已审核点位（避免投稿少显单薄） -->
     <div class="preview-block" id="catPreview" hidden>
-      <div class="layer-label">本分类投稿预览</div>
+      <div class="layer-label">本分类投稿预览<button type="button" class="preview-more" id="catPreviewMore" hidden>更多 →</button></div>
       <div class="grid" id="catPreviewGrid"></div>
     </div>
 
@@ -74,7 +74,7 @@
 
     <!-- 主题投稿预览：点入地图大类即展示该主题下已审核点位 -->
     <div class="preview-block" id="groupPreview" hidden>
-      <div class="layer-label">本主题投稿预览</div>
+      <div class="layer-label">本主题投稿预览<button type="button" class="preview-more" id="groupPreviewMore" hidden>更多 →</button></div>
       <div class="grid" id="groupPreviewGrid"></div>
     </div>
 
@@ -244,10 +244,10 @@
         <textarea name="description" id="fDesc" rows="3" maxlength="300"></textarea>
       </div>
       <div class="form-group">
-        <label>点位图片（PNG，可多选）</label>
+        <label>点位图片（PNG/JPG/WEBP/GIF/BMP，可多选，总计 ≤10MB）</label>
         <div class="file-drop" id="fileDrop">
           <input type="file" name="images" id="fImage" accept=".png,.jpg,.jpeg,.webp,.gif,.bmp" multiple required>
-          <div class="file-hint" id="fileHint">点击或拖拽多张图片到这里</div>
+          <div class="file-hint" id="fileHint">点击或拖拽多张图片到这里（单张 ≤10MB，服务端会统一转为 PNG 存储）</div>
         </div>
         <div class="file-list" id="fFileList"></div>
       </div>
@@ -265,7 +265,7 @@
   </div>
 </div>
 
-<!-- 原图查看弹窗（支持多图翻页） -->
+<!-- 原图查看弹窗（支持多图翻页、触摸滑动、点击缩放） -->
 <div class="modal-mask" id="lightbox" hidden>
   <div class="lightbox glass">
     <button class="modal-close" id="closeLightbox" aria-label="关闭">✕</button>
@@ -274,6 +274,7 @@
     <button class="lb-nav lb-next" id="lbNext" aria-label="下一张">›</button>
     <p id="lbTitle" class="lightbox-title"></p>
     <p id="lbDesc" class="lightbox-desc" hidden></p>
+    <a id="lbOriginal" class="lightbox-original" href="#" target="_blank" rel="noopener noreferrer" hidden>查看原图 ↗</a>
   </div>
 </div>
 

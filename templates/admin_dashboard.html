@@ -40,6 +40,7 @@
   <nav class="admin-tabs">
     <button class="chip active" data-status="pending">待审核</button>
     <button class="chip" data-status="approved">已审核</button>
+    <button class="chip" data-status="rejected">已拒绝</button>
   </nav>
 
   <!-- 分类筛选条：按 一级分类 / 地图主题 筛选投稿，方便快速定位 -->
@@ -73,6 +74,7 @@
     <button class="lb-nav lb-next" id="lbNext" aria-label="下一张">›</button>
     <p id="lbTitle" class="lightbox-title"></p>
     <p id="lbDesc" class="lightbox-desc" hidden></p>
+    <a id="lbOriginal" class="lightbox-original" href="#" target="_blank" rel="noopener noreferrer" hidden>查看原图 ↗</a>
   </div>
 </div>
 
@@ -154,6 +156,12 @@ async function getJSON(url) {
   return data.data;
 }
 
+// 会话过期统一处理：后台接口返回 401 时跳转登录页，返回 true 表示已跳转
+function authExpired(res) {
+  if (res.status === 401) { location.href = '/admin'; return true; }
+  return false;
+}
+
 async function loadList(status) {
   currentStatus = status;
   document.querySelectorAll('.admin-tabs .chip').forEach(b =>
@@ -163,7 +171,12 @@ async function loadList(status) {
   approveAllBtn.hidden = status !== 'pending';
 
   listEl.innerHTML = '<div class="loading-text">加载中...</div>';
-  labelEl.textContent = status === 'pending' ? '待审核条目' : '已审核条目';
+  const labels = {
+    pending: '待审核条目',
+    approved: '已审核条目',
+    rejected: '已拒绝条目（记录与图片保留，可恢复或彻底删除）',
+  };
+  labelEl.textContent = labels[status] || '条目列表';
 
   // 拼接筛选参数（分类 / 主题），请求后台接口
   const params = new URLSearchParams({ status });
@@ -203,6 +216,7 @@ async function loadList(status) {
         ${status === 'pending' ? `
         <button class="btn-ok" onclick="act(${r.id},'approve')">通过</button>
         <button class="btn-no" onclick="act(${r.id},'reject')">拒绝</button>` : ''}
+        ${status === 'rejected' ? `<button class="btn-ok" onclick="restore(${r.id})">恢复</button>` : ''}
         <button class="btn-no" onclick="del(${r.id})">删除</button>
       </div>
     </div>`;
@@ -214,10 +228,22 @@ async function act(id, action) {
   if (action === 'reject') {
     const reason = prompt('请输入拒绝原因（选填，将发送给投稿人）：');
     if (reason === null) return; // 用户取消
+    // 二次确认：拒绝只是软删除（可在“已拒绝”列表恢复），防止误触
+    if (!confirm('确定拒绝该投稿？拒绝后将移入「已拒绝」列表，不再展示（可再恢复或彻底删除）。')) return;
     body = new URLSearchParams();
     body.set('reason', reason.trim());
   }
   const res = await fetch('/admin/' + action + '/' + id, { method: 'POST', body });
+  if (authExpired(res)) return;   // 会话过期：跳转登录页而不是停留在列表反复报错
+  const data = await res.json();
+  if (!data.ok) { alert(data.error || '操作失败'); return; }
+  loadList(currentStatus);
+}
+
+async function restore(id) {
+  if (!confirm('确定将该投稿恢复为待审核？')) return;
+  const res = await fetch('/admin/restore/' + id, { method: 'POST' });
+  if (authExpired(res)) return;
   const data = await res.json();
   if (!data.ok) { alert(data.error || '操作失败'); return; }
   loadList(currentStatus);
@@ -226,6 +252,7 @@ async function act(id, action) {
 async function del(id) {
   if (!confirm('确定删除该点位？删除后不可恢复。')) return;
   const res = await fetch('/admin/delete/' + id, { method: 'POST' });
+  if (authExpired(res)) return;
   const data = await res.json();
   if (!data.ok) { alert(data.error || '删除失败'); return; }
   loadList(currentStatus);
@@ -377,21 +404,44 @@ document.querySelectorAll('.admin-tabs .chip').forEach(b =>
   b.addEventListener('click', () => loadList(b.dataset.status)));
 
 approveAllBtn.addEventListener('click', async () => {
-  if (!confirm('确定全部通过当前所有待审核条目？')) return;
-  const res = await fetch('/admin/approve_all', { method: 'POST' });
+  // 与列表共用筛选条件：只通过当前筛选范围内的待审核条目
+  const scope = [filterCat.value, filterGroup.value].filter(Boolean);
+  const n = currentRows.length;
+  const msg = scope.length
+    ? `确定通过当前筛选（${scope.join(' / ')}）下的 ${n} 条待审核条目？筛选之外的其他待审核投稿不受影响。`
+    : `确定通过全部 ${n} 条待审核条目？`;
+  if (!confirm(msg)) return;
+  const params = new URLSearchParams();
+  if (filterCat.value) params.set('category_l1', filterCat.value);
+  if (filterGroup.value) params.set('map_group_l2', filterGroup.value);
+  const qs = params.toString();
+  const res = await fetch('/admin/approve_all' + (qs ? '?' + qs : ''), { method: 'POST' });
+  if (authExpired(res)) return;
   const data = await res.json();
   if (!data.ok) { alert(data.error || '操作失败'); return; }
   loadList(currentStatus);
 });
 
-/* ---------------- 看大图（点击卡片查看完整图，多图可左右翻页） ---------------- */
+/* ---------------- 看大图（点击卡片查看完整图，多图可翻页；支持触摸滑动与点击缩放） ---------------- */
 
   let lbItems = [];   // [{ src, title, desc }]
   let lbIndex = 0;
+  let lbOpening = false;         // 灯箱打开中（防止重复压入返回标记）
+  let lbCloseCleanup = false;    // 关闭时正在清理返回标记
+  const lbMask = $('#lightbox');
+  const lbImg = $('#lbImg');
 
   function lockBodyScroll(lock) {
     document.body.style.overflow = lock ? 'hidden' : '';
   }
+
+  // 点击图片在 原始尺寸（容器可滚动平移）与适应窗口 间切换（与前台一致）
+  function setLbZoom(zoomed) {
+    lbImg.classList.toggle('zoomed', zoomed);
+    lbMask.classList.toggle('lb-zoomed', zoomed);
+    if (zoomed) lbMask.querySelector('.lightbox').scrollTop = 0;
+  }
+  function lbZoomed() { return lbImg.classList.contains('zoomed'); }
 
   // 打开某条投稿的完整图查看器
   function openLbFor(row) {
@@ -399,12 +449,18 @@ approveAllBtn.addEventListener('click', async () => {
     lbItems = imgs.map(im => ({ src: im.original, title: row.title, desc: row.description || '' }));
     lbIndex = 0;
     renderLb();
-    $('#lightbox').hidden = false;
+    lbMask.hidden = false;
+    // 压入返回标记：手机上看图时按系统返回键先关图，而不是退出后台页面
+    if (!lbOpening) {
+      lbOpening = true;
+      history.pushState({ __lb: true }, '');
+    }
     lockBodyScroll(true);
   }
 
   function renderLb() {
     const item = lbItems[lbIndex] || { src: '', title: '', desc: '' };
+    setLbZoom(false);   // 翻页后回到适应窗口模式
     $('#lbImg').src = item.src;
     $('#lbTitle').textContent = lbItems.length > 1
       ? `${item.title}（${lbIndex + 1}/${lbItems.length}）` : item.title;
@@ -418,6 +474,9 @@ approveAllBtn.addEventListener('click', async () => {
     }
     $('#lbPrev').hidden = lbItems.length <= 1;
     $('#lbNext').hidden = lbItems.length <= 1;
+    const orig = $('#lbOriginal');
+    orig.href = item.src;
+    orig.hidden = !item.src;
   }
 
   function lbStep(delta) {
@@ -426,8 +485,16 @@ approveAllBtn.addEventListener('click', async () => {
   }
 
   function closeLb() {
-    $('#lightbox').hidden = true;
+    lbMask.hidden = true;
+    setLbZoom(false);
     lockBodyScroll(false);
+    if (lbOpening) {
+      lbOpening = false;
+      if (history.state && history.state.__lb) {
+        lbCloseCleanup = true;
+        history.back();
+      }
+    }
   }
 
   // 点击卡片任意位置（操作按钮除外）查看完整图
@@ -439,14 +506,37 @@ approveAllBtn.addEventListener('click', async () => {
     if (row) openLbFor(row);
   });
 
-  $('#closeLightbox').addEventListener('click', closeLb);
-  $('#lightbox').addEventListener('click', (e) => {
-    if (e.target === $('#lightbox')) closeLb();
+  window.addEventListener('popstate', () => {
+    if (lbCloseCleanup) { lbCloseCleanup = false; return; }
+    if (history.state && history.state.__lb) return;
+    if (!lbMask.hidden) closeLb();   // 返回键：先关灯箱
   });
+
+  $('#closeLightbox').addEventListener('click', closeLb);
+  lbMask.addEventListener('click', (e) => {
+    if (e.target === lbMask) closeLb();
+  });
+  lbImg.addEventListener('click', () => setLbZoom(!lbZoomed()));
+  $('#lbOriginal').addEventListener('click', (e) => e.stopPropagation());
   $('#lbPrev').addEventListener('click', (e) => { e.stopPropagation(); lbStep(-1); });
   $('#lbNext').addEventListener('click', (e) => { e.stopPropagation(); lbStep(1); });
+
+  // 触摸滑动翻页（缩放模式下让位给图片平移滚动）
+  let lbTouchX = 0, lbTouchY = 0;
+  lbMask.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    lbTouchX = e.touches[0].clientX;
+    lbTouchY = e.touches[0].clientY;
+  }, { passive: true });
+  lbMask.addEventListener('touchend', (e) => {
+    if (lbZoomed() || e.changedTouches.length !== 1) return;
+    const dx = e.changedTouches[0].clientX - lbTouchX;
+    const dy = e.changedTouches[0].clientY - lbTouchY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 2) lbStep(dx < 0 ? 1 : -1);
+  }, { passive: true });
+
   document.addEventListener('keydown', (e) => {
-    if ($('#lightbox').hidden) return;
+    if (lbMask.hidden) return;
     if (e.key === 'ArrowLeft') lbStep(-1);
     else if (e.key === 'ArrowRight') lbStep(1);
     else if (e.key === 'Escape') closeLb();

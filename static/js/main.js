@@ -9,7 +9,7 @@
   const $ = (s) => document.querySelector(s);
   const $$ = (s, scope) => Array.from((scope || document).querySelectorAll(s));
 
-  const state = { l1: '', l2: '', l3: '', mapsInfo: [], cats: [] };
+  const state = { l1: '', l2: '', l3: '', tag: '', mapsInfo: [], cats: [] };
 
   const layer1 = $('#layer1');
   const layer2 = $('#layer2');
@@ -69,10 +69,43 @@
     }
   }
 
-  /* ---------------- 视图状态（支持浏览器前进/后退） ---------------- */
+  /* ---------------- 视图状态（支持浏览器前进/后退与 URL 分享/刷新恢复） ---------------- */
+
+  // 把视图状态编码为 URL：l1/l2/l3/tag 写入 query（分享链接、刷新后恢复）。
+  // 参数不足以唯一确定视图时显式带上 v（如“分类/主题的全部点位”与地图选择页同参数）。
+  function viewUrl(st) {
+    const params = new URLSearchParams();
+    if (st && st.l1) params.set('l1', st.l1);
+    if (st && st.l2) params.set('l2', st.l2);
+    if (st && st.l3) params.set('l3', st.l3);
+    if (st && st.tag) params.set('tag', st.tag);
+    if (st && st.v === 'points' && !st.l3 && !st.tag) params.set('v', 'points');
+    const qs = params.toString();
+    return location.pathname + (qs ? '?' + qs : '');
+  }
+
+  // 从当前 URL 解析视图状态；l1 不在分类列表中（失效链接）则回到首页。
+  // 旧格式（无 v 参数）按层级推断：l3+l2 → 点位页，l2 → 主题页，l1 → 分类页。
+  function stateFromLocation() {
+    const params = new URLSearchParams(location.search);
+    const v = params.get('v') || '';
+    const l1 = params.get('l1') || '';
+    const l2 = params.get('l2') || '';
+    const l3 = params.get('l3') || '';
+    const tag = params.get('tag') || '';
+    const l1Valid = !!l1 && state.cats.some(c => c.name === l1);
+    if (tag) return { v: 'points', l1: l1Valid ? l1 : '', l2: '', l3: '', tag };
+    if (v === 'points' || (l3 && l2)) {
+      if (l1 && !l1Valid) return { v: 'cats' };
+      return { v: 'points', l1: l1Valid ? l1 : '', l2, l3 };
+    }
+    if (!l1Valid) return { v: 'cats' };
+    if (l2) return { v: 'groups', l1, l2 };
+    return { v: 'maps', l1 };
+  }
 
   function pushView(st) {
-    history.pushState(st, '');
+    history.pushState(st, '', viewUrl(st));
   }
 
   function renderView(st) {
@@ -85,15 +118,17 @@
   }
 
   window.addEventListener('popstate', () => {
-    // 关闭弹窗时我们主动 history.back() 清理标记：本次事件只清栈、不渲染视图
-    if (modalCloseCleanup) {
-      modalCloseCleanup = false;
-      return;
-    }
+    // 关闭弹窗/灯箱时我们主动 history.back() 清理标记：本次事件只清栈、不渲染视图
+    if (modalCloseCleanup) { modalCloseCleanup = false; return; }
+    if (lbCloseCleanup) { lbCloseCleanup = false; return; }
     const st = history.state;
-    if (st && st.__modal) return;          // 返回键刚把标记弹掉：保持当前视图
+    if (st && (st.__modal || st.__lb)) return;   // 返回键刚把标记弹掉：保持当前视图
     if (!submitModal.hidden) {
       closeSubmitModal();                  // 弹窗打开时按返回键：仅关闭弹窗，不退出当前层级
+      return;
+    }
+    if (!$('#lightbox').hidden) {
+      closeLightbox();                     // 灯箱打开时按返回键：仅关灯箱，不退出当前层级
       return;
     }
     renderView(st);
@@ -103,6 +138,9 @@
 
   function showCats() {
     state.l1 = '';
+    state.l2 = '';
+    state.l3 = '';
+    state.tag = '';
     layer1.hidden = false;
     layer2.hidden = true;
     layer3.hidden = true;
@@ -145,6 +183,7 @@
     state.l1 = l1;
     state.l2 = '';
     state.l3 = '';
+    state.tag = '';
     $$('.cat-card').forEach(b => b.classList.toggle('active', b.dataset.cat === l1));
     layer1.hidden = true;
     layer2.hidden = false;
@@ -169,7 +208,7 @@
         btn.addEventListener('click', () => openGroup(l1, btn.dataset.name)));
       // 分类投稿预览：展示该分类下已审核点位（最多 8 条）
       loadPreview('/api/points?status=approved&l1=' + encodeURIComponent(l1),
-        $('#catPreviewGrid'), $('#catPreview'), 'cat');
+        $('#catPreviewGrid'), $('#catPreview'), 'cat', $('#catPreviewMore'));
     } catch (e) {
       groupChips.innerHTML = '<div class="empty">主题加载失败</div>';
     }
@@ -199,6 +238,7 @@
 
   function showGroupsView(l1, l2, maps) {
     state.l3 = '';   // 主题（地图大类）层不预选具体地图，投稿时让用户自行勾选
+    state.tag = '';
     layer1.hidden = true;
     layer2.hidden = true;
     layer3.hidden = false;
@@ -221,11 +261,21 @@
     // 主题投稿预览：展示该分类+主题下已审核点位（最多 8 条）
     loadPreview('/api/points?status=approved&l1=' + encodeURIComponent(l1) +
       '&l2=' + encodeURIComponent(l2),
-      $('#groupPreviewGrid'), $('#groupPreview'), 'group');
+      $('#groupPreviewGrid'), $('#groupPreview'), 'group', $('#groupPreviewMore'));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
   /* ---------------- 具体地图 -> 点位 ---------------- */
+
+  // 拼接点位接口地址：l1/l2/l3/tag 均可选（标签页、搜索直达页可缺层级）
+  function pointsApiUrl(st) {
+    const params = new URLSearchParams({ status: 'approved' });
+    if (st.l1) params.set('l1', st.l1);
+    if (st.l2) params.set('l2', st.l2);
+    if (st.l3) params.set('l3', st.l3);
+    if (st.tag) params.set('tag', st.tag);
+    return '/api/points?' + params.toString();
+  }
 
   async function showGroups(l1, l2) {
     // 从历史记录返回时重新进入“具体地图”页
@@ -242,16 +292,21 @@
   }
 
   async function showPoints(st) {
-    state.l1 = st.l1;
-    state.l2 = st.l2;
-    state.l3 = st.l3;
+    state.l1 = st.l1 || '';
+    state.l2 = st.l2 || '';
+    state.l3 = st.l3 || '';
+    state.tag = st.tag || '';
     layer1.hidden = true;
     layer2.hidden = true;
     layer3.hidden = true;
     pointsArea.hidden = false;
     fabSubmit.hidden = false;
     siteFooter.hidden = true;   // 非首页隐藏页脚
-    pointsTitle.textContent = `${st.l1} · ${st.l2} · ${st.l3}`;
+    // 层级/标签均可缺省：如搜索直达（只有地图）、标签筛选（只有 tag）
+    const scope = [state.l1, state.l2, state.l3].filter(Boolean).join(' · ');
+    pointsTitle.textContent = scope
+      ? (state.tag ? `${scope} · #${state.tag}` : scope)
+      : (state.tag ? `#${state.tag} 的全部点位` : '点位展示');
     const info = (state.mapsInfo || []).find(m => m.name === st.l3) || {};
     // 地图整图横幅（无整图则不显示）
     const banner = $('#mapBanner');
@@ -266,10 +321,7 @@
     }
     renderSkeleton();
     try {
-      const points = await getJSON('/api/points?status=approved' +
-        '&l1=' + encodeURIComponent(st.l1) +
-        '&l2=' + encodeURIComponent(st.l2) +
-        '&l3=' + encodeURIComponent(st.l3));
+      const points = await getJSON(pointsApiUrl(state));
       renderPoints(points);
     } catch (e) {
       pointsGrid.innerHTML = '<div class="empty">加载失败，请重试</div>';
@@ -296,19 +348,24 @@
     return [{ thumb: p.thumb_url, original: p.original_url }];
   }
 
+  // 旧数据标题为 untitle，对外统一展示为“未命名点位”（后台保留原值便于编辑）
+  function displayName(title) {
+    return title && title !== 'untitle' ? title : '未命名点位';
+  }
+
   // 生成单张点位卡片 HTML（点位网格与分类/主题预览共用）
   function pointCardHTML(p, i) {
     const imgs = getPointImages(p);
     return `
       <div class="point-card animate-fadeInUp grid-item-${(i % 8) + 1}" data-point="${i}">
         <div class="thumb-wrap">
-          <img src="${esc(imgs[0].thumb)}" alt="${esc(p.title)}" loading="lazy">
+          <img src="${esc(imgs[0].thumb)}" alt="${esc(displayName(p.title))}" loading="lazy">
           ${imgs.length > 1 ? `<span class="multi-badge">×${imgs.length}</span>` : ''}
         </div>
         <div class="card-body">
-          <div class="card-title">${esc(p.title)}</div>
+          <div class="card-title">${esc(displayName(p.title))}</div>
           ${p.maps && p.maps.length > 1 ? `<div class="card-maps">${p.maps.map(m => `<span class="map-tag">${esc(m)}</span>`).join('')}</div>` : ''}
-          ${p.tags ? `<div class="card-tags">${p.tags.split(/\s+/).filter(Boolean).map(t => `<span class="tag-chip">${esc(t)}</span>`).join('')}</div>` : ''}
+          ${p.tags ? `<div class="card-tags">${p.tags.split(/\s+/).filter(Boolean).map(t => `<span class="tag-chip" data-tag="${esc(t)}">${esc(t)}</span>`).join('')}</div>` : ''}
         </div>
       </div>`;
   }
@@ -329,6 +386,16 @@
 
     $$('.point-card', grid).forEach(card =>
       card.addEventListener('click', () => openLightbox(points, +card.dataset.point)));
+
+    // 标签 chip 可点击：跳到该标签的筛选结果页（不触发卡片的灯箱打开）
+    $$('.tag-chip', grid).forEach(chip =>
+      chip.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const tag = chip.dataset.tag;
+        if (!tag) return;
+        pushView({ v: 'points', tag });
+        showPoints({ v: 'points', tag });
+      }));
   }
 
   function renderPoints(points) {
@@ -347,20 +414,43 @@
   const PREVIEW_MAX = 3;
   const previewTokens = {};
 
-  async function loadPreview(url, grid, block, key) {
+  async function loadPreview(url, grid, block, key, moreBtn) {
     if (!grid || !block) return;
     key = key || 'default';
     const token = (previewTokens[key] = (previewTokens[key] || 0) + 1);
     try {
       const points = await getJSON(url);
       if (token !== previewTokens[key]) return;   // 已有更新的请求，丢弃旧结果
-      if (!points.length) { block.hidden = true; return; }
+      if (!points.length) {
+        // 空预览：分类/主题层不显示投稿 FAB，至少给一句投稿引导而不是整块消失
+        grid.innerHTML = `<div class="empty">${key === 'cat' ? '本分类' : '本主题'}暂无已审核点位，点进具体地图后可点击右下角「投稿」（自动预填地图）</div>`;
+        if (moreBtn) moreBtn.hidden = true;
+        block.hidden = false;
+        return;
+      }
       renderPointsTo(grid, points.slice(0, PREVIEW_MAX));
+      // 超出预览条数时展示“更多 →”，跳到对应范围的完整点位列表
+      if (moreBtn) moreBtn.hidden = points.length <= PREVIEW_MAX;
       block.hidden = false;
     } catch (e) {
-      if (token === previewTokens[key]) block.hidden = true;
+      if (token === previewTokens[key]) {
+        block.hidden = true;
+        if (moreBtn) moreBtn.hidden = true;
+      }
     }
   }
+
+  // “更多 →”点击：进入分类级 / 主题级的完整点位列表（不限定具体地图）
+  $('#catPreviewMore').addEventListener('click', () => {
+    const st = { v: 'points', l1: state.l1, l2: '', l3: '' };
+    pushView(st);
+    showPoints(st);
+  });
+  $('#groupPreviewMore').addEventListener('click', () => {
+    const st = { v: 'points', l1: state.l1, l2: state.l2, l3: '' };
+    pushView(st);
+    showPoints(st);
+  });
 
   /* ---------------- 弹层滚动锁定（移动端点投稿/看原图时页面不乱滚） ---------------- */
 
@@ -374,35 +464,62 @@
     if (cur !== prevScroll) window.scrollTo(0, prevScroll);
   }
 
-  /* ---------------- 原图灯箱（多图翻页） ---------------- */
+  /* ---------------- 原图灯箱（多图翻页、触摸滑动、点击缩放、返回键关闭） ---------------- */
 
   let lbItems = [];   // [{ src, title, desc }]
   let lbIndex = 0;
+  let lbOpening = false;         // 灯箱打开中（防止重复压入返回标记）
+  let lbCloseCleanup = false;    // 关闭时正在清理返回标记（popstate 触发后跳过渲染）
+  const lbMask = $('#lightbox');
+  const lbImg = $('#lbImg');
+
+  // 点击图片在 原始尺寸（容器可滚动平移）与适应窗口 之间切换
+  function setLbZoom(zoomed) {
+    lbImg.classList.toggle('zoomed', zoomed);
+    lbMask.classList.toggle('lb-zoomed', zoomed);
+    if (zoomed) lbMask.querySelector('.lightbox').scrollTop = 0;
+  }
+  function lbZoomed() { return lbImg.classList.contains('zoomed'); }
 
   function openLightbox(points, pointIdx) {
     const flat = [];
     const firstIdx = [];
     points.forEach(p => {
       firstIdx.push(flat.length);
-      getPointImages(p).forEach(im => flat.push({ src: im.original, title: p.title, desc: p.description || '' }));
+      getPointImages(p).forEach(im => flat.push({ src: im.original, title: displayName(p.title), desc: p.description || '' }));
     });
     lbItems = flat;
     lbIndex = Math.max(0, Math.min(firstIdx[pointIdx] ?? 0, flat.length - 1));
     renderLb();
     const prevScroll = window.scrollY || document.documentElement.scrollTop || 0;
-    $('#lightbox').hidden = false;
+    lbMask.hidden = false;
+    // 压入返回标记：手机上看图时按系统返回键先关图，而不是退出当前层级
+    if (!lbOpening) {
+      lbOpening = true;
+      history.pushState({ __lb: true }, '');
+    }
     lockBodyScroll(true);
     restoreScroll(prevScroll);
   }
 
   function closeLightbox() {
-    $('#lightbox').hidden = true;
+    lbMask.hidden = true;
+    setLbZoom(false);
     lockBodyScroll(false);
+    // 清理返回标记：若当前在标记上则回退弹出它，保持历史栈不残留
+    if (lbOpening) {
+      lbOpening = false;
+      if (history.state && history.state.__lb) {
+        lbCloseCleanup = true;
+        history.back();
+      }
+    }
   }
 
   function renderLb() {
     const item = lbItems[lbIndex];
-    $('#lbImg').src = item.src;
+    setLbZoom(false);   // 翻页后回到适应窗口模式
+    lbImg.src = item.src;
     $('#lbTitle').textContent = `${item.title}（${lbIndex + 1}/${lbItems.length}）`;
     const descEl = $('#lbDesc');
     if (item.desc) {
@@ -414,6 +531,10 @@
     }
     $('#lbPrev').hidden = lbItems.length <= 1;
     $('#lbNext').hidden = lbItems.length <= 1;
+    // 新标签页查看原图（攻略图文字较小时可直接看原始分辨率）
+    const orig = $('#lbOriginal');
+    orig.href = item.src;
+    orig.hidden = !item.src;
   }
 
   function lbStep(delta) {
@@ -424,11 +545,28 @@
   $('#closeLightbox').addEventListener('click', closeLightbox);
   $('#lbPrev').addEventListener('click', (e) => { e.stopPropagation(); lbStep(-1); });
   $('#lbNext').addEventListener('click', (e) => { e.stopPropagation(); lbStep(1); });
-  $('#lightbox').addEventListener('click', (e) => {
-    if (e.target === $('#lightbox')) closeLightbox();
+  lbMask.addEventListener('click', (e) => {
+    if (e.target === lbMask) closeLightbox();
   });
+  lbImg.addEventListener('click', () => setLbZoom(!lbZoomed()));
+  $('#lbOriginal').addEventListener('click', (e) => e.stopPropagation());
+
+  // 触摸滑动翻页（缩放模式下让位给图片平移滚动）
+  let lbTouchX = 0, lbTouchY = 0;
+  lbMask.addEventListener('touchstart', (e) => {
+    if (e.touches.length !== 1) return;
+    lbTouchX = e.touches[0].clientX;
+    lbTouchY = e.touches[0].clientY;
+  }, { passive: true });
+  lbMask.addEventListener('touchend', (e) => {
+    if (lbZoomed() || e.changedTouches.length !== 1) return;
+    const dx = e.changedTouches[0].clientX - lbTouchX;
+    const dy = e.changedTouches[0].clientY - lbTouchY;
+    if (Math.abs(dx) > 50 && Math.abs(dx) > Math.abs(dy) * 2) lbStep(dx < 0 ? 1 : -1);
+  }, { passive: true });
+
   document.addEventListener('keydown', (e) => {
-    if ($('#lightbox').hidden) return;
+    if (lbMask.hidden) return;
     if (e.key === 'ArrowLeft') lbStep(-1);
     else if (e.key === 'ArrowRight') lbStep(1);
     else if (e.key === 'Escape') closeLightbox();
@@ -494,6 +632,8 @@
   // 打开投稿弹窗并预填字段：prefill = {l1, l2, l3}
   async function openSubmitModal(prefill) {
     prefill = prefill || {};
+    // 回填记住的投稿人昵称/邮箱（localStorage），免去每次重填
+    fillRememberedSubmitter();
     // 重置图片选择：清空已选文件与 input，避免二次打开后重复选择同一文件不触发 change
     pickedFiles = [];
     fImage.value = '';
@@ -563,14 +703,57 @@
   fCat.addEventListener('change', populateGroups);
   fGroup.addEventListener('change', populateMaps);
 
-  // 图片多选预览 + 拖拽
+  // 桌面端 Esc 关闭投稿弹窗（灯箱打开时由灯箱自己的 Esc 处理，不重复关）
+  document.addEventListener('keydown', (e) => {
+    if (e.key !== 'Escape' || submitModal.hidden) return;
+    if (!$('#lightbox').hidden) return;
+    closeSubmitModal();
+  });
+
+  /* ---------------- 投稿人信息记忆（localStorage，隐私模式下静默降级） ---------------- */
+
+  const LS_SUBMITTER = 'tjmap_submitter';
+  const LS_EMAIL = 'tjmap_email';
+
+  function rememberSubmitter() {
+    try {
+      localStorage.setItem(LS_SUBMITTER, $('#fSubmitter').value.trim());
+      localStorage.setItem(LS_EMAIL, $('#fEmail').value.trim());
+    } catch (e) { /* localStorage 不可用时跳过 */ }
+  }
+
+  function fillRememberedSubmitter() {
+    try {
+      if (!$('#fSubmitter').value) $('#fSubmitter').value = localStorage.getItem(LS_SUBMITTER) || '';
+      if (!$('#fEmail').value) $('#fEmail').value = localStorage.getItem(LS_EMAIL) || '';
+    } catch (e) { /* localStorage 不可用时跳过 */ }
+  }
+
+  /* ---------------- 图片多选预览 + 拖拽 + 大小预检 ---------------- */
+
   const fImage = $('#fImage');
   const fileDrop = $('#fileDrop');
   const fFileList = $('#fFileList');
   let pickedFiles = [];
+  const MAX_FILE_MB = 10;   // 与后端 MAX_UPLOAD_SIZE 一致
+
+  // 选文件时即按大小预检，避免填完整表单提交后才收到 413
+  function filterOversized(files) {
+    const ok = [], oversized = [];
+    files.forEach(f => (f.size > MAX_FILE_MB * 1024 * 1024 ? oversized : ok).push(f));
+    if (oversized.length) {
+      toast('「' + oversized.map(f => f.name).join('」「') + `」超过 ${MAX_FILE_MB}MB，未加入上传列表`);
+    }
+    return ok;
+  }
+
+  function totalSizeMb(files) {
+    return files.reduce((s, f) => s + f.size, 0) / 1024 / 1024;
+  }
 
   fImage.addEventListener('change', () => {
-    pickedFiles = Array.from(fImage.files);
+    pickedFiles = filterOversized(Array.from(fImage.files));
+    syncFileInput();
     renderFileList();
   });
   ['dragover', 'drop'].forEach(evt => fileDrop.addEventListener(evt, (e) => {
@@ -580,7 +763,7 @@
   fileDrop.addEventListener('drop', (e) => {
     const files = e.dataTransfer.files && Array.from(e.dataTransfer.files);
     if (files && files.length) {
-      pickedFiles = files;
+      pickedFiles = filterOversized(files);
       syncFileInput();
       renderFileList();
     }
@@ -649,6 +832,10 @@
       showMsg(msg, '请上传至少一张点位图片', 'error');
       return;
     }
+    if (totalSizeMb(pickedFiles) > MAX_FILE_MB) {
+      showMsg(msg, `图片总大小 ${totalSizeMb(pickedFiles).toFixed(1)}MB，超过 ${MAX_FILE_MB}MB 上限，请减少图片数量或压缩后再试`, 'error');
+      return;
+    }
 
     const fd = new FormData();
     fd.append('category_l1', fCat.value);
@@ -667,12 +854,14 @@
       const data = await res.json();
       if (data.ok) {
         showMsg(msg, '投稿成功！审核通过后将在此展示', 'ok');
+        rememberSubmitter();        // 记住投稿人昵称/邮箱，下次投稿免重填
         e.target.reset();
         pickedFiles = [];
         syncFileInput();
         renderFileList();
         resetMapChecks(fMapList);
         fGroup.disabled = true;
+        fillRememberedSubmitter();  // 重置后回填，弹窗里仍可见
         refreshCurrentData();   // 投稿完成后回拉当前页最新点位/预览
         // 投稿成功后自动关闭弹窗，避免手动关闭；重开后仍会按当前层级预填分类/地图
         setTimeout(() => {
@@ -695,20 +884,17 @@
   // 按当前浏览层级刷新数据区：点位页刷新点位网格，分类/主题页刷新投稿预览。
   // 投稿为 pending 状态，审核通过后再回到本页即可看到，无需手动刷新。
   function refreshCurrentData() {
-    if (state.l3) {
-      getJSON('/api/points?status=approved' +
-        '&l1=' + encodeURIComponent(state.l1) +
-        '&l2=' + encodeURIComponent(state.l2) +
-        '&l3=' + encodeURIComponent(state.l3))
+    if (state.l3 || state.tag) {
+      getJSON(pointsApiUrl(state))
         .then(points => renderPoints(points))
         .catch(() => {});
     } else if (state.l2) {
       loadPreview('/api/points?status=approved&l1=' + encodeURIComponent(state.l1) +
         '&l2=' + encodeURIComponent(state.l2),
-        $('#groupPreviewGrid'), $('#groupPreview'), 'group');
+        $('#groupPreviewGrid'), $('#groupPreview'), 'group', $('#groupPreviewMore'));
     } else if (state.l1) {
       loadPreview('/api/points?status=approved&l1=' + encodeURIComponent(state.l1),
-        $('#catPreviewGrid'), $('#catPreview'), 'cat');
+        $('#catPreviewGrid'), $('#catPreview'), 'cat', $('#catPreviewMore'));
     }
   }
 
@@ -720,6 +906,12 @@
 
   /* ---------------- 启动 ---------------- */
 
-  history.replaceState({ v: 'cats' }, '');
-  loadCategories();
+  (async function init() {
+    // 先加载分类（首页卡片 + URL 恢复时的分类校验），再按 URL 参数恢复层级视图：
+    // ?l1=挂机果盘点位&l2=雪夜古堡&l3=雪夜古堡II 可直达点位页，刷新不丢状态
+    await loadCategories();
+    const initialState = stateFromLocation();
+    history.replaceState(initialState, '', viewUrl(initialState));
+    if (initialState.v !== 'cats') renderView(initialState);
+  })();
 })();

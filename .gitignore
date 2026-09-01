@@ -10,6 +10,10 @@ database.db
 # 开发/演示辅助文件（对外展示仓库不包含）
 DEVELOPMENT_LOG.md
 seed_demo.py
+# 本地测试文件与文档（不入库）
+test_*.py
+run_e2e_server.py
+E2E_TESTING.md
 # 静态资源（css/js/字体/地图与分类图片等）全部入库；仅忽略投稿数据（上传图片）
 static/originals/*
 static/thumbs/*
