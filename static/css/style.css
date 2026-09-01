@@ -1341,12 +1341,8 @@ button { font-family: inherit; cursor: pointer; }
   from { opacity: 0; transform: translateY(-4px); }
   to { opacity: 1; transform: none; }
 }
-.thanks-line {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 4px 14px;
-  margin-top: 6px;
-}
+/* 致谢分组段落：每组一行（图片素材 / 点位测试 / 支持鼓励 / 投稿人） */
+.thanks-group { margin-top: 6px; }
 
 /* 站点磁贴（tjwiki ActionTile：网易官方资源）
    ActionTile stacked：bg-gray-200 / dark:bg-slate-700，hover 变蓝底白字并上浮 */
