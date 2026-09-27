@@ -31,7 +31,15 @@ TJ_map/
 ├── database.db             # SQLite 数据库（首次启动自动创建，gitignore）
 ├── static/
 │   ├── css/style.css       # 全局样式（含深色模式）
-│   ├── js/main.js          # 前端逻辑（三级联动、投稿、后台）
+│   ├── js/main.js          # 前台入口：组装模块并启动
+│   ├── js/navigation.js    # URL 恢复、历史导航、弹层返回标记
+│   ├── js/browse.js        # 分类/主题/地图浏览状态与视图切换
+│   ├── js/points.js        # 点位卡片、列表、分类/主题预览
+│   ├── js/lightbox.js      # 原图灯箱、翻页、缩放、触摸操作
+│   ├── js/submission.js    # 投稿表单、级联选项、投稿人记忆
+│   ├── js/image-picker.js  # 图片选择、拖拽、预览、大小预检
+│   ├── js/api.js           # API 请求与点位查询参数
+│   ├── js/ui.js            # 通用 DOM、文本、提示与滚动工具
 │   ├── js/theme.js         # 深色模式
 │   ├── images/maps/*.png   # 地图静态图（已入库）
 │   ├── images/mice/*.png   # 分类老鼠图标（已入库）
@@ -42,6 +50,16 @@ TJ_map/
     ├── admin_login.html    # 后台登录
     └── admin_dashboard.html# 后台管理
 ```
+
+## 前端维护
+
+前台使用浏览器原生 ES Modules（模块机制），由 `index.html` 的 `type="module"` 脚本加载 `main.js`，无需安装 Node.js 或执行构建。请通过 Flask 提供的 HTTP 地址访问页面。
+
+`main.js` 只负责创建模块、连接回调和启动。浏览层级状态保存在 `browse.js` 内，投稿模块通过 `getContext()` 获取快照，提交完成后通过 `onSubmitted()` 通知浏览模块刷新。灯箱和投稿各自保存交互状态，历史标记统一交给 `navigation.js` 管理，避免关闭弹窗时误退页面。各模块导入时不绑定事件，事件在对应的 `create*` 初始化函数中绑定一次。
+
+修改点位展示时查看 `points.js`，修改投稿流程时查看 `submission.js`，修改图片上传交互时查看 `image-picker.js`。后台页面脚本仍位于各自的 HTML 模板中，深色模式由独立的 `theme.js` 提供。
+
+开发时可选用 Node.js 22.7+ 运行前端回归测试（无需安装 npm 依赖）：`node --test tests/frontend.test.mjs`。测试覆盖分享链接恢复、页面前进后退、弹层历史清理、API 错误处理与旧点位数据兼容。
 
 ## 快速开始（本地运行）
 
