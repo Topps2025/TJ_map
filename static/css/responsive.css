@@ -1,0 +1,31 @@
+/* ---------------- 响应式微调 ---------------- */
+
+/* 移动端卡片优化（对齐 tjwiki patterns：禁用 hover 上浮，点按缩放反馈） */
+@media (max-width: 768px) {
+  .cat-card:hover,
+  .map-card:hover,
+  .point-card:hover { transform: none; }
+  .cat-card:hover .cat-card-thumb img,
+  .map-card:hover .map-card-thumb img,
+  .point-card:hover .thumb-wrap img { transform: none; }
+  .cat-card:active,
+  .map-card:active,
+  .point-card:active {
+    transform: scale(0.98);
+    transition: transform 0.1s ease;
+  }
+}
+
+@media (max-width: 480px) {
+  .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .cat-tabs { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .admin-card { flex-wrap: wrap; }
+  .admin-actions { flex-direction: row; width: 100%; }
+  .admin-actions button { flex: 1; }
+  .page-title { font-size: 28px; }
+  .logo span { display: none; }
+}
+
+@media (min-width: 720px) {
+  .grid { grid-template-columns: repeat(auto-fill, minmax(190px, 1fr)); }
+}

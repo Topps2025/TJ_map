@@ -1,0 +1,355 @@
+/* ---------------- 弹窗（对齐 wiki dialog 风格） ---------------- */
+
+.modal-mask {
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(15, 23, 42, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 16px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  z-index: 100;
+  animation: fadeIn 0.2s ease;
+}
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes fadeOut { to { opacity: 0; } }
+
+/* 弹窗内容：打开时上浮淡入 */
+.modal-mask .modal {
+  animation: modalIn 0.24s cubic-bezier(0.16, 1, 0.3, 1);
+}
+@keyframes modalIn {
+  from { opacity: 0; transform: translateY(16px) scale(0.97); }
+  to { opacity: 1; transform: none; }
+}
+
+/* 弹窗关闭：遮罩淡出 + 内容下沉 */
+.modal-mask.closing { animation: fadeOut 0.18s ease forwards; }
+.modal-mask.closing .modal { animation: modalOut 0.18s ease forwards; }
+@keyframes modalOut {
+  to { opacity: 0; transform: translateY(10px) scale(0.98); }
+}
+
+.glass {
+  background: var(--wiki-surface-raised);
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--radius-xl);
+  box-shadow: var(--wiki-shadow-card-hover);
+}
+
+.modal {
+  position: relative;
+  width: 100%;
+  max-width: 460px;
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: 26px 22px;
+  color: var(--wiki-foreground);
+}
+.modal-title { font-family: var(--font-display-stack); font-size: 18px; margin-bottom: 18px; font-weight: 700; }
+
+.modal-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  width: 32px;
+  height: 32px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--wiki-border);
+  color: var(--wiki-muted-foreground);
+  font-size: 15px;
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+.modal-close:hover { background: var(--wiki-border-strong); color: var(--wiki-foreground); }
+
+/* ---------------- 表单 ---------------- */
+
+.form-group { margin-bottom: 16px; }
+.form-group label {
+  display: block;
+  font-size: 13px;
+  color: var(--wiki-muted-foreground);
+  margin-bottom: 6px;
+  font-weight: 600;
+}
+.form-group select,
+.form-group input[type="text"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group textarea,
+.login-card input,
+.file-row-title {
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--wiki-border-strong);
+  border-radius: var(--radius-md);
+  background: var(--wiki-surface);
+  color: var(--wiki-foreground);
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  resize: vertical;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.form-group select:focus,
+.form-group input:focus,
+.form-group textarea:focus,
+.login-card input:focus,
+.file-row-title:focus {
+  border-color: transparent;
+  box-shadow: 0 0 0 2px var(--wiki-focus);
+}
+.form-group select option { color: var(--wiki-foreground); background: var(--wiki-surface); }
+.form-group select:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.form-hint {
+  font-size: 12px;
+  color: var(--wiki-muted-foreground);
+  margin: 0 0 8px;
+}
+
+.map-check-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(110px, 1fr));
+  gap: 10px;
+}
+.map-check-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 6px 9px;
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--radius-md);
+  background: var(--wiki-surface);
+  cursor: pointer;
+  overflow: hidden;
+  transition: border-color 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease;
+}
+.map-check-item:hover { border-color: #93c5fd; }
+.dark .map-check-item:hover { border-color: #3b82f6; }
+.map-check-item:has(input:checked) {
+  border-color: var(--wiki-primary);
+  box-shadow: 0 0 0 1px var(--wiki-primary) inset;
+  background: var(--wiki-primary-soft);
+}
+.map-check-item input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+.map-check-thumb {
+  position: relative;
+  width: 100%;
+  padding-top: 100%;
+  border-radius: var(--radius-sm);
+  overflow: hidden;
+  background: var(--wiki-border);
+}
+.map-check-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+.map-check-name {
+  font-size: 12px;
+  font-weight: 600;
+  text-align: center;
+  color: var(--wiki-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-drop {
+  position: relative;
+  border: 1.5px dashed var(--wiki-border-strong);
+  border-radius: var(--radius-lg);
+  padding: 14px;
+  text-align: center;
+  cursor: pointer;
+  transition: border-color 0.2s ease, background-color 0.2s ease;
+}
+.file-drop:hover, .file-drop.dragover {
+  border-color: var(--wiki-primary);
+  background: var(--wiki-primary-soft);
+}
+.file-drop input[type="file"] {
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+}
+.file-hint { font-size: 13px; color: var(--wiki-muted-foreground); padding: 18px 0; }
+
+.file-list { margin-top: 12px; display: flex; flex-direction: column; gap: 10px; }
+.file-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--radius-md);
+  background: var(--wiki-surface);
+  box-shadow: var(--wiki-shadow-card);
+}
+.file-row-thumb {
+  width: 56px;
+  height: 56px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  flex-shrink: 0;
+  background: var(--wiki-border);
+}
+.file-row-info { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.file-row-name {
+  font-size: 12px;
+  color: var(--wiki-muted-foreground);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.form-msg {
+  font-size: 13px;
+  padding: 9px 12px;
+  border-radius: var(--radius-md);
+  margin-bottom: 12px;
+}
+.form-msg.error {
+  background: var(--wiki-danger-soft);
+  color: var(--wiki-danger);
+  border: 1px solid rgba(220, 38, 38, 0.3);
+}
+.dark .form-msg.error { border-color: rgba(248, 113, 113, 0.4); }
+.form-msg.ok {
+  background: var(--wiki-ok-soft);
+  color: var(--wiki-ok);
+  border: 1px solid rgba(22, 163, 74, 0.3);
+}
+.dark .form-msg.ok { border-color: rgba(52, 211, 153, 0.4); }
+
+/* ---------------- 按钮（对齐 wiki ActionButton） ---------------- */
+
+.btn-primary {
+  width: 100%;
+  padding: 11px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: var(--wiki-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 700;
+  box-shadow: var(--wiki-shadow-button);
+  transition: background-color 0.2s ease;
+}
+.btn-primary:hover { background: var(--wiki-primary-hover); }
+.btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-ghost {
+  padding: 8px 18px;
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--radius-md);
+  background: var(--wiki-surface);
+  color: var(--wiki-muted-foreground);
+  font-size: 13px;
+  font-weight: 500;
+  transition: border-color 0.2s ease, color 0.2s ease;
+}
+.btn-ghost:hover { border-color: var(--wiki-border-strong); color: var(--wiki-foreground); }
+
+/* ---------------- 原图灯箱 ---------------- */
+
+.lightbox {
+  max-width: 92vw;
+  max-height: 92vh;
+  overflow: hidden;
+  padding: 16px;
+  text-align: center;
+}
+.lightbox img {
+  max-width: 100%;
+  max-height: 76vh;
+  border-radius: var(--radius-md);
+  object-fit: contain;
+}
+/* 点击图片在 原始尺寸 与 适应窗口 间切换：原始尺寸下容器可滚动平移 */
+.lightbox img { cursor: zoom-in; }
+.lightbox img.zoomed { max-width: none; max-height: none; cursor: zoom-out; }
+.lightbox.lb-zoomed {
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* 手机上缩放时隐藏翻页钮，避免遮挡攻略图内容 */
+.lightbox.lb-zoomed .lb-nav { display: none; }
+.lightbox-original {
+  display: inline-block;
+  margin-top: 10px;
+  font-size: 13px;
+  color: var(--wiki-muted-foreground);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.lightbox-original:hover { color: var(--wiki-foreground); }
+.lightbox-title {
+  margin-top: 12px;
+  font-size: 14px;
+  color: var(--wiki-muted-foreground);
+}
+.lightbox-desc {
+  margin-top: 6px;
+  font-size: 13px;
+  line-height: 1.6;
+  color: var(--wiki-foreground);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.lb-nav {
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: 50%;
+  background: rgba(15, 23, 42, 0.55);
+  color: #fff;
+  font-size: 26px;
+  line-height: 1;
+  z-index: 2;
+  transition: background-color 0.2s ease;
+}
+.lb-nav:hover { background: rgba(15, 23, 42, 0.8); }
+.lb-prev { left: 8px; }
+.lb-next { right: 8px; }
+
+/* ---------------- 提示 Toast ---------------- */
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 90px;
+  transform: translateX(-50%);
+  background: #1f2937;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  z-index: 200;
+  box-shadow: var(--wiki-shadow-nav);
+  animation: fadeIn 0.25s ease;
+}
+.dark .toast { background: #475569; }

@@ -1,0 +1,249 @@
+/* ---------------- 入场动画（对齐 wiki fadeInUp + stagger） ---------------- */
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(20px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.animate-fadeInUp {
+  animation: fadeInUp 0.5s ease-out forwards;
+}
+
+.grid-item-1 { animation-delay: 0.02s; }
+.grid-item-2 { animation-delay: 0.06s; }
+.grid-item-3 { animation-delay: 0.1s; }
+.grid-item-4 { animation-delay: 0.14s; }
+.grid-item-5 { animation-delay: 0.18s; }
+.grid-item-6 { animation-delay: 0.22s; }
+.grid-item-7 { animation-delay: 0.26s; }
+.grid-item-8 { animation-delay: 0.3s; }
+.grid-item-9 { animation-delay: 0.34s; }
+.grid-item-10 { animation-delay: 0.38s; }
+.grid-item-11 { animation-delay: 0.42s; }
+.grid-item-12 { animation-delay: 0.46s; }
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-fadeInUp { animation: none !important; }
+  html { scroll-behavior: auto; }
+}
+
+/* ---------------- 首页底部（1:1 仿 tjwiki：分隔线 + 网站说明 + CollapseCard 折叠卡 + 站点磁贴） ---------------- */
+
+.site-footer {
+  margin-top: 40px;
+  padding: 0 0 40px;
+}
+
+/* 分隔线（tjwiki：h-px bg-gray-300 dark:bg-gray-700） */
+.footer-divider {
+  height: 1px;
+  max-width: 896px;
+  margin: 0 auto;
+  background: #d1d5db;
+}
+.dark .footer-divider { background: #334155; }
+
+/* 网站说明（居中大标题 + max-w-2xl 左对齐正文） */
+.footer-about { padding: 24px 0 6px; text-align: center; }
+.footer-about-title {
+  font-family: var(--font-display-stack);
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  color: var(--wiki-foreground);
+}
+.dark .footer-about-title { color: #fff; }
+.footer-about-body {
+  max-width: 672px;
+  margin: 0 auto;
+  padding: 0 8px 18px;
+  text-align: left;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #4b5563;
+}
+.dark .footer-about-body { color: #d1d5db; }
+
+/* 折叠卡片（tjwiki CollapseCard：标题栏 + 箭头 + 内容） */
+.footer-cards {
+  max-width: 672px;
+  margin: 14px auto 0;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+.wiki-card {
+  background: var(--wiki-surface);
+  border: 1px solid var(--wiki-border);
+  border-radius: 10px;
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.04);
+  transition: box-shadow 0.2s ease;
+}
+.wiki-card:hover { box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1); }
+.wiki-card-head {
+  list-style: none;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 10px 14px;
+  cursor: pointer;
+  font-weight: 700;
+  font-size: 15px;
+  color: var(--wiki-foreground);
+  border-bottom: 1px solid #f3f4f6;
+}
+.dark .wiki-card-head { border-bottom-color: #1f2937; }
+.wiki-card-head::-webkit-details-marker { display: none; }
+.wiki-card .chevron {
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+  color: var(--wiki-muted-foreground);
+  transform: rotate(-90deg);
+  transition: transform 0.2s ease;
+}
+.wiki-card[open] .wiki-card-head .chevron { transform: rotate(0deg); }
+.wiki-card-body {
+  padding: 12px 14px;
+  font-size: 14px;
+  line-height: 1.8;
+  color: #374151;
+}
+.dark .wiki-card-body { color: #d1d5db; }
+.wiki-card[open] .wiki-card-body { animation: cardSlideDown 0.18s ease; }
+@keyframes cardSlideDown {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: none; }
+}
+/* 致谢分组段落：每组一行（图片素材 / 点位测试 / 支持鼓励 / 投稿人） */
+.thanks-group { margin-top: 6px; }
+
+/* 站点磁贴（tjwiki ActionTile：网易官方资源）
+   ActionTile stacked：bg-gray-200 / dark:bg-slate-700，hover 变蓝底白字并上浮 */
+.footer-sites-wrap { margin-top: 30px; text-align: center; }
+.footer-sites-title {
+  font-family: var(--font-display-stack);
+  font-size: 30px;
+  font-weight: 700;
+  margin-bottom: 18px;
+  color: var(--wiki-foreground);
+}
+.dark .footer-sites-title { color: #fff; }
+.footer-sites {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 14px;
+}
+.site-tile {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 180px;
+  padding: 16px 24px;
+  background: #e5e7eb; /* gray-200 */
+  color: #1f2937;      /* gray-800 */
+  border-radius: 6px;  /* rounded-md */
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1);
+  text-align: center;
+  text-decoration: none;
+  transition: background-color 0.3s ease, color 0.3s ease,
+    transform 0.3s ease, box-shadow 0.3s ease;
+}
+.dark .site-tile {
+  background: #334155; /* slate-700 */
+  color: #e2e8f0;      /* slate-200 */
+}
+.site-tile:hover {
+  background: var(--wiki-primary); /* blue-600 */
+  color: #fff;
+  transform: translateY(-4px);
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
+}
+.site-tile-icon { width: 32px; height: 32px; color: currentColor; }
+.site-tile-name { font-size: 20px; font-weight: 700; color: inherit; }
+
+.footer-list { list-style: none; }
+.footer-list li {
+  font-size: 13px;
+  line-height: 1.9;
+  color: var(--wiki-muted-foreground);
+}
+.footer-link {
+  color: var(--wiki-primary);
+  text-decoration: none;
+  word-break: break-all;
+}
+.footer-link:hover { text-decoration: underline; }
+.footer-muted { color: var(--wiki-muted-foreground); opacity: 0.85; }
+
+/* 版权行（tjwiki IcpFooter 风格：顶部细线 + 居中灰字） */
+.footer-copyright {
+  max-width: 896px;
+  margin: 32px auto 0;
+  padding-top: 14px;
+  border-top: 1px solid var(--wiki-border);
+  font-size: 12px;
+  line-height: 1.7;
+  color: var(--wiki-muted-foreground);
+  text-align: center;
+}
+
+/* 备案信息：ICP 备案号（工信部链接）+ 公安备案（如配置） */
+.footer-icp {
+  display: inline-block;
+  margin: 0 8px;
+  color: inherit;
+  text-decoration: none;
+  transition: color 0.2s ease;
+}
+.footer-icp:hover { color: var(--wiki-primary); }
+
+/* 后台管理入口：低调融入版权行，不打扰普通访客 */
+.footer-admin {
+  color: inherit;
+  text-decoration: none;
+  margin-left: 8px;
+  opacity: 0.55;
+  transition: opacity 0.2s ease;
+}
+.footer-admin:hover { opacity: 1; }
+
+/* ---------------- 右下角投稿卡片 ---------------- */
+
+.submit-fab {
+  position: fixed;
+  right: 22px;
+  bottom: 22px;
+  z-index: 90;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 20px;
+  border: none;
+  border-radius: 999px;
+  background: var(--wiki-primary);
+  color: #fff;
+  font-size: 15px;
+  font-weight: 600;
+  font-family: var(--font-display-stack);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.18);
+  cursor: pointer;
+  transition: transform 0.15s ease, box-shadow 0.15s ease, background-color 0.2s ease;
+}
+.submit-fab svg { width: 18px; height: 18px; }
+.submit-fab:hover {
+  background: var(--wiki-primary-hover);
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.25);
+}
+.submit-fab:active { transform: scale(0.96); }
+/* 投稿卡片出现时（进入地图/点位页）轻快弹出 */
+.submit-fab { animation: fabIn 0.25s cubic-bezier(0.16, 1, 0.3, 1); }
+@keyframes fabIn {
+  from { opacity: 0; transform: translateY(12px) scale(0.9); }
+  to { opacity: 1; transform: none; }
+}
+.submit-fab[hidden] { display: none; }

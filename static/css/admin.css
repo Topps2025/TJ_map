@@ -1,0 +1,94 @@
+/* ---------------- 后台 ---------------- */
+
+.admin-body { padding-bottom: 30px; }
+
+.admin-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 20px; }
+
+/* 后台分类筛选条（一级分类 / 地图主题） */
+.admin-filters {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+.admin-filters select {
+  padding: 7px 12px;
+  font-size: 13px;
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--radius-md);
+  background: var(--wiki-surface);
+  color: var(--wiki-foreground);
+  cursor: pointer;
+}
+.admin-filters select:disabled { opacity: 0.5; cursor: not-allowed; }
+.admin-filters select option { color: var(--wiki-foreground); background: var(--wiki-surface); }
+
+.admin-list { display: flex; flex-direction: column; gap: 12px; }
+
+.admin-card {
+  display: flex;
+  gap: 14px;
+  align-items: center;
+  padding: 12px;
+  box-shadow: var(--wiki-shadow-card);
+}
+.admin-thumb-wrap {
+  position: relative;
+  flex-shrink: 0;
+  line-height: 0;
+}
+.admin-thumb {
+  width: 84px;
+  height: 84px;
+  object-fit: cover;
+  border-radius: var(--radius-md);
+  cursor: pointer;
+  background: var(--wiki-border);
+}
+.admin-info { flex: 1; min-width: 0; }
+.admin-title { font-size: 15px; font-weight: 700; margin-bottom: 4px; }
+.admin-meta { font-size: 12px; color: var(--wiki-muted-foreground); margin-top: 2px; word-break: break-all; }
+.admin-actions { display: flex; flex-direction: column; gap: 8px; flex-shrink: 0; }
+
+.btn-ok, .btn-no {
+  padding: 8px 18px;
+  border: none;
+  border-radius: var(--radius-md);
+  font-size: 13px;
+  font-weight: 600;
+  color: #fff;
+  box-shadow: var(--wiki-shadow-button);
+  transition: filter 0.2s ease;
+}
+.btn-ok { background: var(--wiki-ok); }
+.btn-ok:hover { filter: brightness(1.08); }
+.btn-no { background: var(--wiki-danger); }
+.btn-no:hover { filter: brightness(1.08); }
+
+/* ---------------- 登录页 ---------------- */
+
+.login-wrap {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 24px;
+  padding: 16px;
+}
+.login-title {
+  font-family: var(--font-display-stack);
+  font-size: 34px;
+  font-weight: 700;
+  color: var(--wiki-primary);
+  text-align: center;
+}
+.dark .login-title { color: #60a5fa; }
+.login-card {
+  width: 100%;
+  max-width: 400px;
+  padding: 32px 26px;
+  box-shadow: var(--wiki-shadow-card-hover);
+}
+.login-logo { font-size: 20px; text-align: center; margin-bottom: 24px; font-weight: 700; }

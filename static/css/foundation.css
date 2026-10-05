@@ -1,0 +1,280 @@
+/* ============================================================
+   猫和老鼠点位查询 · 前端风格重构
+   仿照 tjwiki（Tom-and-jerry-chase-wiki）设计语言：
+   浅灰底 / 白卡片 / 克制的蓝色焦点 / 大号展示标题 / 深色模式
+   ============================================================ */
+
+/* ---------------- 字体 ---------------- */
+
+@font-face {
+  font-family: 'InterVariable';
+  src: url('/static/fonts/InterVariable.woff2') format('woff2');
+  font-weight: 100 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* ---------------- 设计令牌（Token） ---------------- */
+
+:root {
+  /* 页面画布 */
+  --wiki-background: #f3f4f6;            /* gray-100 */
+  --wiki-foreground: #111827;            /* gray-900 */
+  --wiki-surface: #ffffff;
+  --wiki-surface-raised: #ffffff;
+  --wiki-muted-foreground: #4b5563;      /* gray-600 */
+  --wiki-border: #e5e7eb;                /* gray-200 */
+  --wiki-border-strong: #d1d5db;         /* gray-300 */
+  --wiki-focus: #3b82f6;                 /* blue-500 */
+
+  /* 焦点色 */
+  --wiki-primary: #2563eb;               /* blue-600 */
+  --wiki-primary-hover: #1d4ed8;         /* blue-700 */
+  --wiki-primary-soft: rgba(37, 99, 235, 0.08);
+
+  /* 语义色 */
+  --wiki-danger: #dc2626;
+  --wiki-danger-soft: rgba(220, 38, 38, 0.07);
+  --wiki-ok: #16a34a;
+  --wiki-ok-soft: rgba(22, 163, 74, 0.07);
+
+  /* 阴影 */
+  --wiki-shadow-card: 0 2px 6px rgba(0, 0, 0, 0.05);
+  --wiki-shadow-card-hover: 0 12px 24px rgba(0, 0, 0, 0.1), 0 4px 12px rgba(0, 0, 0, 0.04);
+  --wiki-shadow-button: 0 1px 3px rgba(0, 0, 0, 0.1);
+  --wiki-shadow-nav: 0 2px 4px rgba(0, 0, 0, 0.1);
+
+  /* 圆角 */
+  --radius-sm: 6px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --radius-xl: 12px;
+
+  /* 布局 */
+  --nav-height: 64px;
+
+  /* 字体栈 */
+  --font-sans-stack:
+    'InterVariable', 'Noto Sans SC', 'PingFang SC', 'Microsoft YaHei',
+    'Source Han Sans SC', 'Helvetica Neue', Arial, sans-serif;
+  --font-display-stack:
+    'InterVariable', 'LXGW WenKai', 'Noto Serif SC', 'Source Han Serif SC',
+    'Songti SC', 'Times New Roman', serif;
+
+  color-scheme: light;
+}
+
+.dark {
+  --wiki-background: #0f172a;            /* slate-900 */
+  --wiki-foreground: #e2e8f0;            /* slate-200 */
+  --wiki-surface: #1e293b;               /* slate-800 */
+  --wiki-surface-raised: #1e293b;
+  --wiki-muted-foreground: #9ca3af;      /* gray-400 */
+  --wiki-border: #334155;                /* slate-700 */
+  --wiki-border-strong: #475569;         /* slate-600 */
+  --wiki-focus: #60a5fa;                 /* blue-400 */
+  --wiki-primary: #2563eb;               /* blue-600 */
+  --wiki-primary-hover: #3b82f6;         /* blue-500 */
+  --wiki-primary-soft: rgba(37, 99, 235, 0.18);
+  --wiki-danger-soft: rgba(248, 113, 113, 0.12);
+  --wiki-ok-soft: rgba(52, 211, 153, 0.12);
+
+  --wiki-shadow-card: 0 2px 6px rgba(0, 0, 0, 0.3);
+  --wiki-shadow-card-hover: 0 12px 32px rgba(0, 0, 0, 0.45), 0 8px 16px rgba(0, 0, 0, 0.25);
+  --wiki-shadow-button: 0 1px 3px rgba(0, 0, 0, 0.3);
+  --wiki-shadow-nav: 0 2px 4px rgba(0, 0, 0, 0.3);
+
+  color-scheme: dark;
+}
+
+/* ---------------- 基础 ---------------- */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html { -webkit-text-size-adjust: 100%; scroll-behavior: smooth; }
+
+body {
+  font-family: var(--font-sans-stack);
+  background: var(--wiki-background);
+  color: var(--wiki-foreground);
+  line-height: 1.65;
+  letter-spacing: -0.01em;
+  min-height: 100vh;
+  padding-bottom: 96px;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  transition: background-color 0.35s ease, color 0.35s ease;
+  text-rendering: optimizeLegibility;
+}
+
+img { max-width: 100%; display: block; }
+button { font-family: inherit; cursor: pointer; }
+[hidden] { display: none !important; }
+
+/* 焦点指示（对齐 wiki focus ring 风格） */
+*:focus-visible {
+  outline: 2px solid var(--wiki-focus);
+  outline-offset: 2px;
+}
+*:focus:not(:focus-visible) { outline: none; }
+
+/* ---------------- 顶部导航（对齐 wiki TabNavigation） ---------------- */
+
+.site-header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  z-index: 9999;
+  width: 100%;
+  padding: 10px 0;
+  background: var(--wiki-surface-raised);
+  box-shadow: var(--wiki-shadow-nav);
+}
+
+.header-inner {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 0 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.logo {
+  font-family: var(--font-display-stack);
+  font-size: 19px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  color: var(--wiki-foreground);
+  text-decoration: none;
+  white-space: nowrap;
+}
+.logo span {
+  color: var(--wiki-muted-foreground);
+  font-size: 13px;
+  font-weight: 500;
+}
+.logo .logo-icon {
+  height: 1.25em;      /* 与页眉文字（19px）视觉对齐 */
+  width: auto;
+  align-self: center;
+  margin-right: 2px;
+}
+.logo .logo-credit {
+  color: var(--wiki-primary);
+  text-decoration: none;
+  transition: text-decoration 0.15s ease;
+}
+.logo .logo-credit:hover { text-decoration: underline; }
+
+.header-nav {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+}
+
+/* 导航胶囊按钮（对齐 wiki getNavigationButtonClasses） */
+.nav-pill {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  min-height: 38px;
+  padding: 0 14px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: #e5e7eb;
+  color: #1f2937;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  white-space: nowrap;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+.nav-pill:hover { background: #d1d5db; }
+.nav-pill.active { background: var(--wiki-primary); color: #fff; }
+.nav-pill.active:hover { background: var(--wiki-primary-hover); }
+.nav-pill:active { transform: scale(0.97); }
+
+.dark .nav-pill { background: #334155; color: #e2e8f0; }
+.dark .nav-pill:hover { background: #475569; }
+.dark .nav-pill.active { background: var(--wiki-primary); color: #fff; }
+
+/* 方形图标按钮（深色模式切换，对齐 wiki DarkModeToggleButton） */
+.nav-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  width: 40px;
+  height: 40px;
+  border: none;
+  border-radius: var(--radius-md);
+  background: #e5e7eb;
+  color: #1f2937;
+  transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
+}
+.nav-icon-btn:hover { background: #d1d5db; }
+.nav-icon-btn:active { transform: scale(0.94); }
+.dark .nav-icon-btn { background: #334155; color: #e2e8f0; }
+.dark .nav-icon-btn:hover { background: #475569; }
+.nav-icon-btn svg { width: 20px; height: 20px; }
+.nav-icon-btn .icon-sun { display: none; }
+.dark .nav-icon-btn .icon-sun { display: block; }
+.dark .nav-icon-btn .icon-moon { display: none; }
+
+/* ---------------- 页面容器 ---------------- */
+
+.container {
+  max-width: 1152px;
+  margin: 0 auto;
+  padding: calc(var(--nav-height) + 28px) 16px 20px;
+}
+
+/* ---------------- 页面头部（对齐 wiki PageHeader / PageTitle） ---------------- */
+
+.page-header {
+  text-align: center;
+  padding: 14px 0 8px;
+  margin-bottom: 26px;
+}
+
+.page-title {
+  font-family: var(--font-display-stack);
+  font-size: 34px;
+  line-height: 1.2;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--wiki-primary);
+  text-shadow: 0 0 40px var(--wiki-primary-soft);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+.dark .page-title { color: #60a5fa; }
+.page-title .page-title-icon {
+  height: 1.1em;       /* 略大于字高做光学补偿 */
+  width: auto;
+  flex-shrink: 0;
+}
+
+.page-desc {
+  margin-top: 8px;
+  font-size: 16px;
+  line-height: 1.7;
+  color: #374151;
+}
+.dark .page-desc { color: #cbd5e1; }
+
+.page-sub {
+  margin-top: 4px;
+  font-size: 14px;
+  color: var(--wiki-muted-foreground);
+}

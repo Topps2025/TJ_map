@@ -1,0 +1,492 @@
+/* ---------------- 层级区块 ---------------- */
+
+.layer { margin-bottom: 26px; }
+
+/* 分类/主题页的投稿预览区块（位于地图卡片上方，先看投稿再选地图） */
+.preview-block { margin-top: 4px; }
+.preview-block + .map-card-grid { margin-top: 24px; }
+.preview-block .layer-label { margin-top: 0; }
+
+.layer-label {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--wiki-muted-foreground);
+  letter-spacing: 0.5px;
+}
+.layer-label::after {
+  content: "";
+  flex: 1;
+  height: 1px;
+  background: var(--wiki-border);
+}
+
+/* 预览“更多 →”：跳到对应范围的完整点位列表 */
+.preview-more {
+  border: none;
+  background: none;
+  padding: 0;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--wiki-primary);
+  cursor: pointer;
+  white-space: nowrap;
+}
+.preview-more:hover { text-decoration: underline; text-underline-offset: 3px; }
+
+.list-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+/* ---------------- 分类介绍页 ---------------- */
+
+.intro-card {
+  display: flex;
+  gap: 26px;
+  align-items: flex-start;
+  padding: 24px;
+}
+.intro-media {
+  flex-shrink: 0;
+  width: 200px;
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--wiki-border);
+  box-shadow: var(--wiki-shadow-card);
+}
+.intro-media img {
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  object-fit: cover;
+  object-position: top;
+  display: block;
+}
+.intro-body { flex: 1; min-width: 0; }
+.intro-title {
+  font-family: var(--font-display-stack);
+  font-size: 26px;
+  line-height: 1.3;
+  font-weight: 700;
+  margin-bottom: 12px;
+}
+.intro-desc {
+  font-size: 15px;
+  line-height: 1.75;
+  color: #374151;
+  margin-bottom: 16px;
+}
+.intro-desc .intro-link {
+  color: var(--wiki-primary);
+  text-decoration: none;
+  font-weight: 500;
+  word-break: break-all;
+}
+.intro-desc .intro-link:hover { text-decoration: underline; }
+.dark .intro-desc { color: #cbd5e1; }
+.intro-tips {
+  list-style: none;
+  margin-bottom: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 9px;
+}
+.intro-tips li {
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+  font-size: 14px;
+  line-height: 1.6;
+  color: var(--wiki-muted-foreground);
+}
+.intro-tips li::before {
+  content: "•";
+  color: var(--wiki-primary);
+  font-weight: 700;
+  flex-shrink: 0;
+}
+/* 介绍文字留白：内容为空时隐藏对应区域 */
+#introDesc:empty,
+#introTips:empty {
+  display: none;
+}
+
+@media (max-width: 640px) {
+  .intro-card {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+  .intro-media { width: 140px; }
+  .intro-tips li { text-align: left; }
+}
+
+/* ---------------- 第一层：分类（配图卡片，对齐 wiki CatalogCard） ---------------- */
+
+.cat-tabs {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 14px;
+}
+
+.cat-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--wiki-surface);
+  box-shadow: var(--wiki-shadow-card);
+  overflow: hidden;
+  text-align: left;
+  contain: layout style;
+  backface-visibility: hidden;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.cat-card:hover {
+  border-color: #93c5fd;
+  box-shadow: var(--wiki-shadow-card-hover);
+  transform: translateY(-4px);
+  will-change: transform, box-shadow;
+}
+.cat-card:not(:hover) { will-change: auto; }
+.dark .cat-card:hover { border-color: #3b82f6; }
+.cat-card.active {
+  border-color: var(--wiki-primary);
+  box-shadow: 0 0 0 1px var(--wiki-primary) inset;
+}
+
+.cat-card-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+  background: var(--wiki-border);
+}
+.cat-card-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: top;
+  transition: transform 0.3s ease;
+}
+.cat-card-placeholder {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
+}
+.cat-card:hover .cat-card-thumb img { transform: scale(1.06); }
+
+.cat-card-name {
+  display: block;
+  padding: 9px 8px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.4;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dark .cat-card-name { color: #fff; }
+.cat-card.active .cat-card-name { color: var(--wiki-primary); }
+.dark .cat-card.active .cat-card-name { color: #60a5fa; }
+
+/* ---------------- 第二、三层：chip ---------------- */
+
+.chip-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.chip {
+  padding: 8px 18px;
+  border: 1px solid var(--wiki-border);
+  border-radius: var(--radius-md);
+  background: var(--wiki-surface);
+  color: var(--wiki-foreground);
+  font-size: 13px;
+  font-weight: 500;
+  transition: border-color 0.2s ease, background-color 0.2s ease, color 0.2s ease;
+}
+.chip:hover { border-color: var(--wiki-border-strong); }
+.chip.active {
+  background: var(--wiki-primary);
+  border-color: var(--wiki-primary);
+  color: #fff;
+}
+.chip.active:hover { background: var(--wiki-primary-hover); }
+
+/* ---------------- 地图卡片 / 点位卡片（对齐 wiki CatalogCard） ---------------- */
+
+.map-card-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 14px;
+}
+
+.map-card {
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  padding: 0;
+  border: 1px solid transparent;
+  border-radius: var(--radius-md);
+  background: var(--wiki-surface);
+  box-shadow: var(--wiki-shadow-card);
+  overflow: hidden;
+  text-align: left;
+  contain: layout style;
+  backface-visibility: hidden;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.map-card:hover {
+  border-color: #93c5fd;
+  box-shadow: var(--wiki-shadow-card-hover);
+  transform: translateY(-4px);
+  will-change: transform, box-shadow;
+}
+.map-card:not(:hover) { will-change: auto; }
+.dark .map-card:hover { border-color: #3b82f6; }
+.map-card.active {
+  border-color: var(--wiki-primary);
+  box-shadow: 0 0 0 1px var(--wiki-primary) inset;
+}
+
+.map-card-thumb {
+  position: relative;
+  display: block;
+  width: 100%;
+  padding-top: 100%;
+  overflow: hidden;
+  background: var(--wiki-border);
+}
+.map-card-thumb img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s ease;
+}
+.map-card-placeholder {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, #e5e7eb 0%, #f3f4f6 100%);
+}
+.map-card:hover .map-card-thumb img { transform: scale(1.06); }
+
+.map-card-name {
+  display: block;
+  padding: 9px 8px 10px;
+  font-size: 13px;
+  font-weight: 700;
+  text-align: center;
+  line-height: 1.4;
+  color: #1f2937;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.dark .map-card-name { color: #fff; }
+.map-card.active .map-card-name { color: var(--wiki-primary); }
+.dark .map-card.active .map-card-name { color: #60a5fa; }
+
+/* ---------------- 地图整图横幅 ---------------- */
+
+.map-banner {
+  position: relative;
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  border: 1px solid var(--wiki-border);
+  background: var(--wiki-surface);
+  box-shadow: var(--wiki-shadow-card);
+  margin-bottom: 18px;
+}
+.map-banner-img {
+  width: 100%;
+  max-height: 360px;
+  object-fit: contain;
+  display: block;
+  margin: 0 auto;
+}
+.map-banner-name {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  padding: 5px 14px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+  backdrop-filter: blur(4px);
+}
+
+/* ---------------- 点位网格 ---------------- */
+
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 14px;
+  align-items: start;
+}
+
+.point-card {
+  border-radius: var(--radius-md);
+  overflow: hidden;
+  background: var(--wiki-surface);
+  box-shadow: var(--wiki-shadow-card);
+  color: var(--wiki-foreground);
+  cursor: pointer;
+  border: 1px solid transparent;
+  contain: layout style;
+  backface-visibility: hidden;
+  transition: transform 0.15s cubic-bezier(0.4, 0, 0.2, 1), border-color 0.2s ease, box-shadow 0.2s ease;
+}
+.point-card:hover {
+  border-color: #93c5fd;
+  box-shadow: var(--wiki-shadow-card-hover);
+  transform: translateY(-4px);
+  will-change: transform, box-shadow;
+}
+.point-card:not(:hover) { will-change: auto; }
+.dark .point-card:hover { border-color: #3b82f6; }
+
+.thumb-wrap {
+  position: relative;
+  overflow: hidden;
+  background: var(--wiki-border);
+}
+.thumb-wrap img {
+  display: block;
+  width: 100%;
+  height: auto;
+  object-fit: contain;
+  opacity: 0;
+  transition: opacity 0.3s ease, transform 0.3s ease;
+}
+.thumb-wrap img.loaded { opacity: 1; }
+.point-card:hover .thumb-wrap img { transform: scale(1.05); }
+
+.card-body { padding: 9px 8px 10px; text-align: center; }
+.card-title {
+  font-size: 13px;
+  font-weight: 700;
+  line-height: 1.45;
+  color: #1f2937;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.dark .card-title { color: #fff; }
+
+.card-tags {
+  margin-top: 6px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 4px;
+}
+.tag-chip {
+  display: inline-block;
+  padding: 1px 7px;
+  font-size: 11px;
+  line-height: 1.5;
+  border-radius: 999px;
+  color: var(--wiki-primary);
+  background: color-mix(in srgb, var(--wiki-primary) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--wiki-primary) 22%, transparent);
+  cursor: pointer;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+.tag-chip:hover {
+  background: color-mix(in srgb, var(--wiki-primary) 18%, transparent);
+  border-color: color-mix(in srgb, var(--wiki-primary) 45%, transparent);
+}
+.dark .tag-chip { color: #93c5fd; background: rgba(59, 130, 246, 0.14); border-color: rgba(59, 130, 246, 0.3); }
+
+.multi-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  min-width: 22px;
+  padding: 2px 7px;
+  border-radius: 999px;
+  background: rgba(15, 23, 42, 0.72);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  text-align: center;
+  backdrop-filter: blur(4px);
+}
+
+.card-maps {
+  margin-top: 5px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  justify-content: center;
+}
+.map-tag {
+  padding: 1px 7px;
+  border-radius: 999px;
+  font-size: 11px;
+  line-height: 1.6;
+  color: var(--wiki-primary);
+  background: var(--wiki-primary-soft);
+  border: 1px solid var(--wiki-border);
+  white-space: nowrap;
+}
+.dark .map-tag { color: #60a5fa; }
+
+/* ---------------- 骨架屏（对齐 wiki skeleton-shimmer） ---------------- */
+
+.skeleton-card {
+  border-radius: var(--radius-md);
+  background: var(--wiki-surface);
+  box-shadow: var(--wiki-shadow-card);
+  overflow: hidden;
+}
+.skeleton-block {
+  position: relative;
+  overflow: hidden;
+  background: #e5e7eb;
+}
+.dark .skeleton-block { background: #334155; }
+.skeleton-block::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.5), transparent);
+  animation: shimmer 1.4s infinite;
+}
+.dark .skeleton-block::after {
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.06), transparent);
+}
+@keyframes shimmer {
+  100% { transform: translateX(100%); }
+}
+.sk-img { aspect-ratio: 1 / 1; }
+.sk-line { height: 12px; margin: 8px 10px 6px; border-radius: var(--radius-sm); }
+.sk-line.short { width: 55%; }
+
+.empty, .loading-text {
+  text-align: center;
+  color: var(--wiki-muted-foreground);
+  padding: 48px 0;
+  font-size: 14px;
+}
