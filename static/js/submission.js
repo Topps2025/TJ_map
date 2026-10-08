@@ -145,8 +145,15 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
     if (e.target === submitModal) closeSubmitModal();
   });
 
-  fCat.addEventListener('change', populateGroups);
-  fGroup.addEventListener('change', populateMaps);
+  // 手动选择优先于未完成的预填，也使此前的级联请求失效。
+  fCat.addEventListener('change', () => {
+    draftVersion++;
+    populateGroups();
+  });
+  fGroup.addEventListener('change', () => {
+    draftVersion++;
+    populateMaps();
+  });
 
   // 桌面端 Esc 关闭投稿弹窗（灯箱打开时由灯箱自己的 Esc 处理，不重复关）
   document.addEventListener('keydown', (e) => {

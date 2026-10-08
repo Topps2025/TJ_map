@@ -12,6 +12,7 @@ export function createBrowser({ navigation, points }) {
   const browseStatus = $('#browseStatus');
   const homeGuide = $('#homeGuide');
   let viewVersion = 0;
+  let currentView = 'cats';
   const layer2 = $('#layer2');
   const layer3 = $('#layer3');
   const pointsArea = $('#pointsArea');
@@ -47,6 +48,7 @@ export function createBrowser({ navigation, points }) {
 
   function renderView(st) {
     if (!st) st = { v: 'cats' };
+    currentView = st.v;
     homeGuide.hidden = ['maps', 'groups', 'points'].includes(st.v);
     if (st.v === 'maps') showMaps(st.l1);
     else if (st.v === 'groups') showGroups(st.l1, st.l2);
@@ -154,6 +156,7 @@ export function createBrowser({ navigation, points }) {
   }
 
   function showGroupsView(l1, l2, maps) {
+    currentView = 'groups';
     browseStatus.hidden = true;
     state.l3 = '';   // 主题（地图大类）层不预选具体地图，投稿时让用户自行勾选
     state.tag = '';
@@ -190,6 +193,18 @@ export function createBrowser({ navigation, points }) {
     // 从历史记录返回时重新进入“具体地图”页
     state.l1 = l1;
     state.l2 = l2;
+    state.l3 = '';
+    state.tag = '';
+    browseStatus.hidden = true;
+    layer1.hidden = false;
+    setActiveCategory(l1);
+    layer2.hidden = true;
+    layer3.hidden = false;
+    pointsArea.hidden = true;
+    fabSubmit.hidden = false;
+    siteFooter.hidden = true;
+    $('#groupPreview').hidden = true;
+    mapChips.innerHTML = '<div class="loading-text">加载地图中...</div>';
     try {
       const maps = await getJSON('/api/maps?l1=' + encodeURIComponent(l1) +
         '&l2=' + encodeURIComponent(l2));
@@ -197,6 +212,7 @@ export function createBrowser({ navigation, points }) {
       state.mapsInfo = maps;
       showGroupsView(l1, l2, maps);
     } catch (e) {
+      if (version !== viewVersion) return;
       mapChips.innerHTML = '<div class="empty">地图加载失败</div>';
     }
   }
@@ -268,10 +284,9 @@ export function createBrowser({ navigation, points }) {
   // 按当前浏览层级刷新数据区：点位页刷新点位网格，分类/主题页刷新投稿预览。
   // 投稿为 pending 状态，审核通过后再回到本页即可看到，无需手动刷新。
   function refreshCurrentData() {
-    if (state.l3 || state.tag) {
-      getJSON(pointsApiUrl(state))
-        .then(points => renderPoints(points))
-        .catch(() => {});
+    if (currentView === 'points') {
+      // 按实际视图刷新，并复用视图令牌拦截切页后的旧响应。
+      showPoints({ ...state });
     } else if (state.l2) {
       loadPreview('/api/points?status=approved&l1=' + encodeURIComponent(state.l1) +
         '&l2=' + encodeURIComponent(state.l2),
