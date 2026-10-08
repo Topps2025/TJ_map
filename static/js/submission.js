@@ -8,6 +8,9 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
   const submitModal = $('#submitModal');
   const fCat = $('#fCat'), fGroup = $('#fGroup'), fMapList = $('#fMapList');
   const fabSubmit = $('#fabSubmit');
+  let hasDraft = false;
+  let closeTimer;
+  let draftVersion = 0;
 
   function renderMapChecks(maps, container, checked) {
     container.innerHTML = maps.map((m) => `
@@ -36,12 +39,15 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
 
   // 按当前分类填充地图主题下拉
   async function populateGroups() {
+    const version = draftVersion;
+    const category = fCat.value;
     fGroup.disabled = !fCat.value;
     resetMapChecks(fMapList);
     if (!fCat.value) { fGroup.innerHTML = '<option value="">先选分类</option>'; return; }
     fGroup.innerHTML = '<option value="">加载中...</option>';
     try {
       const groups = await getJSON('/api/groups?l1=' + encodeURIComponent(fCat.value));
+      if (version !== draftVersion || category !== fCat.value) return;
       fGroup.innerHTML = '<option value="">请选择</option>' +
         groups.map(g => `<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('');
     } catch (e) { toast('主题加载失败'); }
@@ -49,11 +55,15 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
 
   // 按当前分类+主题填充具体地图勾选列表
   async function populateMaps() {
+    const version = draftVersion;
+    const category = fCat.value;
+    const group = fGroup.value;
     if (!fGroup.value) { resetMapChecks(fMapList); return; }
     fMapList.innerHTML = '<p class="form-hint">加载中...</p>';
     try {
       const maps = await getJSON('/api/maps?l1=' + encodeURIComponent(fCat.value) +
         '&l2=' + encodeURIComponent(fGroup.value));
+      if (version !== draftVersion || category !== fCat.value || group !== fGroup.value) return;
       renderMapChecks(maps, fMapList, new Set());
     } catch (e) { toast('地图加载失败'); }
   }
@@ -63,8 +73,7 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
     prefill = prefill || {};
     // 回填记住的投稿人昵称/邮箱（localStorage），免去每次重填
     fillRememberedSubmitter();
-    // 重置图片选择：清空已选文件与 input，避免二次打开后重复选择同一文件不触发 change
-    imagePicker.reset();
+    clearTimeout(closeTimer);
     const prevScroll = window.scrollY || document.documentElement.scrollTop || 0;
     submitModal.classList.remove('closing');
     submitModal.hidden = false;
@@ -74,15 +83,22 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
     $('#formMsg').className = 'form-msg';
     // 压入标记状态：手机端点开投稿后按返回键时，先关闭弹窗而不是退出页面
     navigation.openOverlay('__modal');
+    // 同一页面会话内重开时保留完整草稿，包括文件和地图勾选。
+    if (hasDraft) return;
+    const version = ++draftVersion;
     try {
       await ensureCatsLoaded();
     } catch (e) { toast('分类加载失败'); return; }
-    if (prefill.l1) fCat.value = prefill.l1;
+    if (version !== draftVersion) return;
+    hasDraft = true;
+    fCat.value = prefill.l1 || '';
     await populateGroups();
+    if (version !== draftVersion) return;
     if (prefill.l2 && Array.from(fGroup.options).some(o => o.value === prefill.l2)) {
       fGroup.value = prefill.l2;
     }
     await populateMaps();
+    if (version !== draftVersion) return;
     if (prefill.l3) {
       // 预勾选当前具体地图
       Array.from(fMapList.querySelectorAll('input[type="checkbox"]')).forEach(cb => {
@@ -100,7 +116,7 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
     //   左滑返回会一次次回到同一个页面，表现为“卡在当前界面退不出去”）
     navigation.closeOverlay('__modal');
     // 等淡出动画播完再真正隐藏并解锁滚动
-    setTimeout(() => {
+    closeTimer = setTimeout(() => {
       submitModal.classList.remove('closing');
       submitModal.hidden = true;
       lockBodyScroll(false);
@@ -114,6 +130,17 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
   // 阻止移动端点击后浏览器把焦点滚到页脚附近（固定按钮在文档坐标里的位置），导致画面跳到网站说明/致谢
   fabSubmit.addEventListener('mousedown', (e) => e.preventDefault());
   $('#closeSubmit').addEventListener('click', closeSubmitModal);
+  $('#discardDraft').addEventListener('click', () => {
+    if ($('#submitBtn').disabled) return;
+    if (!window.confirm('放弃当前草稿？已填写内容和图片将被清空。')) return;
+    draftVersion++;
+    $('#submitForm').reset();
+    imagePicker.reset();
+    resetMapChecks(fMapList);
+    fGroup.disabled = true;
+    hasDraft = false;
+    closeSubmitModal();
+  });
   submitModal.addEventListener('click', (e) => {
     if (e.target === submitModal) closeSubmitModal();
   });
@@ -196,10 +223,13 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
     pickedFiles.forEach(f => fd.append('images', f));
 
     btn.disabled = true;
+    $('#discardDraft').disabled = true;
     btn.textContent = '提交中...';
     try {
       const data = await submitPoint(fd);
       if (data.ok) {
+        draftVersion++;
+        hasDraft = false;
         showMsg(msg, '投稿成功！审核通过后将在此展示', 'ok');
         rememberSubmitter();        // 记住投稿人昵称/邮箱，下次投稿免重填
         e.target.reset();
@@ -209,10 +239,8 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
         fillRememberedSubmitter();  // 重置后回填，弹窗里仍可见
         onSubmitted();   // 投稿完成后回拉当前页最新点位/预览
         // 投稿成功后自动关闭弹窗，避免手动关闭；重开后仍会按当前层级预填分类/地图
-        setTimeout(() => {
-          closeSubmitModal();
-          toast('投稿成功！审核通过后将在此展示');
-        }, 800);
+        closeSubmitModal();
+        toast('投稿成功！审核通过后将在此展示');
       } else {
         showMsg(msg, data.error || '提交失败', 'error');
       }
@@ -220,6 +248,7 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
       showMsg(msg, '网络错误，请重试', 'error');
     } finally {
       btn.disabled = false;
+      $('#discardDraft').disabled = false;
       btn.textContent = '提交投稿';
     }
   });

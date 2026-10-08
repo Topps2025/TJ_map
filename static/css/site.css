@@ -163,6 +163,13 @@
   transform: translateY(-4px);
   box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1);
 }
+.home-guide { display: grid; gap: 18px; }
+.home-guide .wiki-card-head { cursor: default; margin: 0; }
+.friend-link { display: flex; align-items: center; gap: 16px; color: var(--wiki-foreground); text-decoration: none; padding: 8px 0; }
+.friend-link img { object-fit: contain; flex-shrink: 0; }
+.friend-link strong, .friend-link .footer-muted { display: block; }
+.friend-link:hover strong { color: var(--wiki-primary); }
+.friend-arrow { margin-left: auto; color: var(--wiki-muted-foreground); }
 .site-tile-icon { width: 32px; height: 32px; color: currentColor; }
 .site-tile-name { font-size: 20px; font-weight: 700; color: inherit; }
 

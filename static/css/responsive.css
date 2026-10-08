@@ -16,9 +16,36 @@
   }
 }
 
+@media (max-width: 860px) {
+  .site-page > main.container { margin-left: 0; padding: calc(var(--nav-height) + 20px) 18px 24px; }
+  .site-page .site-footer { margin-left: 0; }
+  .site-page .header-inner { padding: 0 14px; gap: 8px; }
+  .site-page .logo { font-size: 14px; gap: 4px; }
+  .site-page .logo-icon { display: none; }
+  .site-page .nav-icon-btn { width: 34px; height: 34px; }
+  .mobile-sidebar-toggle { display: inline-flex; white-space: nowrap; min-height: 40px; align-items: center; }
+  .browse-sidebar {
+    width: min(280px, 85vw);
+    transform: translateX(-100%);
+    transition: transform 0.2s ease;
+    z-index: 10001;
+    top: 0;
+    padding-top: 24px;
+  }
+  .sidebar-open .browse-sidebar { transform: translateX(0); }
+  .sidebar-backdrop { display: block; position: fixed; inset: 0; border: 0; background: rgba(15, 23, 42, .4); z-index: 10000; }
+  .sidebar-open { overflow: hidden; }
+  .browse-detail .intro-card { padding: 18px; flex-direction: row; text-align: left; align-items: flex-start; gap: 14px; }
+  .browse-detail .intro-media { width: 56px; }
+  .browse-detail .intro-title { font-size: 21px; }
+  .browse-detail .map-card-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+  .container > .page-header { text-align: left; margin-bottom: 20px; }
+  .container > .page-header .page-title { justify-content: flex-start; }
+}
+
 @media (max-width: 480px) {
   .grid { grid-template-columns: repeat(2, 1fr); gap: 12px; }
-  .cat-tabs { grid-template-columns: repeat(2, 1fr); gap: 12px; }
+  .cat-tabs { grid-template-columns: 1fr; }
   .admin-card { flex-wrap: wrap; }
   .admin-actions { flex-direction: row; width: 100%; }
   .admin-actions button { flex: 1; }

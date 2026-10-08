@@ -8,10 +8,11 @@
   <script src="/static/js/theme.js"></script>
   <link rel="stylesheet" href="/static/css/style.css">
 </head>
-<body>
+<body class="site-page">
 
 <header class="site-header">
   <div class="header-inner">
+    <button class="mobile-sidebar-toggle btn-ghost" id="mobileSidebarToggle" type="button" aria-expanded="false" aria-controls="layer1">☰ 分类</button>
     <span class="logo"><img class="logo-icon" src="/static/images/icons/inquiry.png" alt="">developed by <a class="logo-credit" href="https://space.bilibili.com/489447581" target="_blank" rel="noopener noreferrer">托普斯</a></span>
     <nav class="header-nav">
       <button class="nav-icon-btn" id="darkToggle" aria-label="切换深色模式">
@@ -37,15 +38,58 @@
     <p class="page-sub">浏览玩家分享的点位，随时投稿补充</p>
   </header>
 
-  <!-- 第一层：分类 -->
-  <section class="layer" id="layer1">
-    <div class="cat-tabs" id="catTabs"><!-- JS 渲染 --></div>
-  </section>
+  <div class="browse-workspace">
+    <button class="sidebar-backdrop" id="sidebarBackdrop" type="button" aria-label="关闭分类导航" hidden></button>
+    <!-- 分类导航：桌面常驻左侧，手机从左侧滑入 -->
+    <aside class="browse-sidebar" id="layer1" aria-label="点位分类">
+      <div class="sidebar-controls">
+        <h2 class="sidebar-title">点位分类</h2>
+        <button class="sidebar-toggle" id="sidebarToggle" type="button" aria-expanded="true" aria-controls="catTabs" aria-label="收起分类侧栏">
+          <svg class="sidebar-toggle-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M15 18l-6-6 6-6"/>
+          </svg>
+        </button>
+      </div>
+      <nav class="cat-tabs" id="catTabs" aria-label="选择点位分类"><!-- JS 渲染 --></nav>
+    </aside>
 
-  <!-- 第二层：地图主题（分类介绍已并入本页） -->
-  <section class="layer" id="layer2" hidden>
+    <!-- 从详情：根据左侧分类切换地图主题、具体地图和点位 -->
+    <div class="browse-detail">
+      <section class="home-guide" id="homeGuide" aria-label="网站说明与使用指南">
+        <section class="wiki-card">
+          <h2 class="wiki-card-head wiki-card-title">网站说明</h2>
+          <div class="wiki-card-body">
+            <p>本项目由<a class="footer-link" href="https://space.bilibili.com/489447581" target="_blank" rel="noopener noreferrer">托普斯</a>维护，已在 GitHub 开源（<a class="footer-link" href="https://github.com/Topps2025/TJ_map" target="_blank" rel="noopener noreferrer">项目主页</a>），欢迎<a class="footer-link" href="mailto:1248185594@qq.com">给出建议</a>，点Star⭐或通过<a class="footer-link" href="https://tjwiki.com" target="_blank" rel="noopener noreferrer">猫鼠wiki交流群</a>加入我们！</p>
+            <p>本网站是仿造<a class="footer-link" href="https://tjwiki.com" target="_blank" rel="noopener noreferrer">tjwiki</a>维护的非官方玩家资料项目，仅供学习与交流。</p>
+          </div>
+        </section>
+        <section class="wiki-card">
+          <h2 class="wiki-card-head wiki-card-title">使用指南</h2>
+          <div class="wiki-card-body">
+            <ol class="footer-list">
+              <li>① 从分类导航选择分类 → 地图主题 → 具体地图，浏览已审核点位</li>
+              <li>② 点击点位卡片可查看原图与描述，多图可左右翻页</li>
+              <li>③ 点开地图大类或具体地图后，点击右下角「投稿」卡片上传点位截图，分类与地图会自动填好</li>
+              <li>④ 投稿经管理员审核通过后，将在对应地图下展示</li>
+            </ol>
+          </div>
+        </section>
+        <section class="wiki-card">
+          <h2 class="wiki-card-head wiki-card-title">友情链接</h2>
+          <div class="wiki-card-body">
+            <a class="friend-link" href="https://tjwiki.com" target="_blank" rel="noopener noreferrer">
+              <img src="/static/images/icons/mouse-faction.png" width="56" height="48" alt="">
+              <span><strong>猫鼠wiki</strong><span class="footer-muted">tjwiki.com</span></span>
+              <span class="friend-arrow" aria-hidden="true">↗</span>
+            </a>
+          </div>
+        </section>
+      </section>
+      <p id="browseStatus" class="loading-text" role="status" hidden></p>
+      <!-- 第二层：地图主题（分类介绍已并入本页） -->
+      <section class="layer" id="layer2" hidden>
     <div class="list-toolbar">
-      <button class="btn-ghost" id="backToCats">← 返回分类</button>
+      <button class="btn-ghost" id="backToCats">← 首页</button>
     </div>
     <div class="intro-card glass">
       <div class="intro-media">
@@ -57,42 +101,52 @@
         <ul class="intro-tips" id="introTips"></ul>
       </div>
     </div>
+    <div class="map-section-heading"><h3>选择地图主题</h3><p>选择主题，再查看具体地图的点位。</p></div>
+    <div class="map-card-grid" id="groupChips"><!-- JS 渲染 --></div>
+
     <!-- 分类投稿预览：点入分类即展示该分类下已审核点位（避免投稿少显单薄） -->
     <div class="preview-block" id="catPreview" hidden>
-      <div class="layer-label">本分类投稿预览<button type="button" class="preview-more" id="catPreviewMore" hidden>更多 →</button></div>
+      <div class="layer-label">本分类投稿预览<button type="button" class="preview-more" id="catPreviewMore" hidden>查看本分类全部点位 →</button></div>
       <div class="grid" id="catPreviewGrid"></div>
     </div>
 
-    <div class="map-card-grid" id="groupChips"><!-- JS 渲染 --></div>
-  </section>
+      </section>
 
   <!-- 具体地图 -->
-  <section class="layer" id="layer3" hidden>
+      <section class="layer" id="layer3" hidden>
     <div class="list-toolbar">
       <button class="btn-ghost" id="backToGroups">← 返回主题</button>
     </div>
 
+    <div class="map-section-heading"><h3>选择具体地图</h3></div>
+    <div class="map-card-grid" id="mapChips"><!-- JS 渲染 --></div>
+
     <!-- 主题投稿预览：点入地图大类即展示该主题下已审核点位 -->
     <div class="preview-block" id="groupPreview" hidden>
-      <div class="layer-label">本主题投稿预览<button type="button" class="preview-more" id="groupPreviewMore" hidden>更多 →</button></div>
+      <div class="layer-label">本主题投稿预览<button type="button" class="preview-more" id="groupPreviewMore" hidden>查看本主题全部点位 →</button></div>
       <div class="grid" id="groupPreviewGrid"></div>
     </div>
 
-    <div class="map-card-grid" id="mapChips"><!-- JS 渲染 --></div>
-  </section>
+      </section>
 
   <!-- 点位网格 -->
-  <section class="layer" id="pointsArea" hidden>
+      <section class="layer" id="pointsArea" hidden>
     <div class="list-toolbar">
-      <button class="btn-ghost" id="backToMaps">← 返回具体地图</button>
+      <button class="btn-ghost" id="backToMaps">← 返回上一级</button>
       <div class="layer-label" id="pointsTitle">点位展示</div>
+    </div>
+    <div class="tag-actions" id="tagActions" hidden>
+      <button type="button" class="btn-ghost" id="clearTag">清除标签筛选</button>
+      <button type="button" class="btn-ghost" id="globalTag">查看全站同标签</button>
     </div>
     <div class="map-banner" id="mapBanner" hidden>
       <img src="" alt="" class="map-banner-img">
       <span class="map-banner-name"></span>
     </div>
     <div class="grid" id="pointsGrid"></div>
-  </section>
+      </section>
+    </div>
+  </div>
 
 </main>
 
@@ -111,38 +165,8 @@
     <!-- 分隔线 -->
     <div class="footer-divider"></div>
 
-    <!-- 网站说明 -->
-    <section class="footer-about" aria-label="网站说明">
-      <h2 class="footer-about-title">网站说明</h2>
-      <div class="footer-about-body">
-        <p>
-          本项目由<a class="footer-link" href="https://space.bilibili.com/489447581" target="_blank" rel="noopener noreferrer">托普斯</a>维护，已在 GitHub 开源（<a class="footer-link" href="https://github.com/Topps2025/TJ_map" target="_blank" rel="noopener noreferrer">项目主页</a>），欢迎<a class="footer-link" href="mailto:1248185594@qq.com">给出建议</a>，点Star⭐或通过<a class="footer-link" href="https://tjwiki.com" target="_blank" rel="noopener noreferrer">猫鼠wiki交流群</a>加入我们！
-        </p>
-        <p>
-          本网站是仿造<a class="footer-link" href="https://tjwiki.com" target="_blank" rel="noopener noreferrer">tjwiki</a>维护的非官方玩家资料项目，仅供学习与交流。
-        </p>
-      </div>
-    </section>
-
     <!-- 折叠卡片（仿 tjwiki CollapseCard） -->
     <div class="footer-cards">
-      <details class="wiki-card">
-        <summary class="wiki-card-head">
-          <span class="wiki-card-title">使用指南</span>
-          <svg class="chevron" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" aria-hidden="true">
-            <path stroke-linecap="round" stroke-linejoin="round" d="M19 9l-7 7-7-7"/>
-          </svg>
-        </summary>
-        <div class="wiki-card-body">
-          <ol class="footer-list">
-            <li>① 顶部选择分类 → 地图主题 → 具体地图，浏览已审核点位</li>
-            <li>② 点击点位卡片可查看原图与描述，多图可左右翻页</li>
-            <li>③ 点开地图大类或具体地图后，点击右下角「投稿」卡片上传点位截图，分类与地图会自动填好</li>
-            <li>④ 投稿经管理员审核通过后，将在对应地图下展示</li>
-          </ol>
-        </div>
-      </details>
-
       <details class="wiki-card">
         <summary class="wiki-card-head">
           <span class="wiki-card-title">反馈渠道</span>
@@ -174,6 +198,9 @@
           </p>
           <p class="thanks-group">
             感谢 <a class="footer-link" href="https://tjwiki.com" target="_blank" rel="noopener noreferrer">猫鼠wiki</a>、<a class="footer-link" href="https://space.bilibili.com/241188567" target="_blank" rel="noopener noreferrer">小曙光</a> 对本项目的支持和鼓励，
+          </p>
+          <p class="thanks-group">
+            感谢 <a class="footer-link" href="https://space.bilibili.com/1348901173" target="_blank" rel="noopener noreferrer">晚风诉夜丷</a>、wolf 的大量投稿，
           </p>
           <p class="thanks-group">感谢所有投稿人。致谢名单持续更新中......</p>
         </div>
@@ -238,6 +265,8 @@
   <div class="modal glass">
     <button class="modal-close" id="closeSubmit" aria-label="关闭">✕</button>
     <h2 class="modal-title">投稿新点位</h2>
+    <p class="form-hint">关闭后保留草稿；刷新或离开网站后草稿会丢失。</p>
+    <button type="button" class="btn-ghost" id="discardDraft">放弃草稿</button>
     <form id="submitForm" enctype="multipart/form-data" novalidate>
       <div class="form-group">
         <label>分类</label>

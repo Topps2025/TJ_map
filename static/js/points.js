@@ -12,7 +12,7 @@ export function displayName(title) {
 }
 
 // 点位卡片、列表与预览共用渲染；导航和灯箱由入口注入。
-export function createPoints({ navigate, openLightbox }) {
+export function createPoints({ navigate, openLightbox, getContext }) {
   const pointsGrid = $('#pointsGrid');
 
   function renderSkeleton() {
@@ -64,7 +64,7 @@ export function createPoints({ navigate, openLightbox }) {
         e.stopPropagation();
         const tag = chip.dataset.tag;
         if (!tag) return;
-        navigate({ v: 'points', tag });
+        navigate({ v: 'points', ...getContext(), tag });
       }));
   }
 

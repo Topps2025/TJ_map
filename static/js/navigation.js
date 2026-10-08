@@ -21,7 +21,7 @@ export function stateFromLocation(categories, search = location.search) {
   const l3 = params.get('l3') || '';
   const tag = params.get('tag') || '';
   const l1Valid = !!l1 && categories.some(c => c.name === l1);
-  if (tag) return { v: 'points', l1: l1Valid ? l1 : '', l2: '', l3: '', tag };
+  if (tag) return { v: 'points', l1: l1Valid ? l1 : '', l2: l1 && !l1Valid ? '' : l2, l3: l1 && !l1Valid ? '' : l3, tag };
   if (v === 'points' || (l3 && l2)) {
     if (l1 && !l1Valid) return { v: 'cats' };
     return { v: 'points', l1: l1Valid ? l1 : '', l2, l3 };
@@ -29,6 +29,14 @@ export function stateFromLocation(categories, search = location.search) {
   if (!l1Valid) return { v: 'cats' };
   if (l2) return { v: 'groups', l1, l2 };
   return { v: 'maps', l1 };
+}
+
+// 页面内返回按层级计算，不依赖进入页面前的浏览器历史。
+export function parentView(st) {
+  if (st.tag) return { v: 'points', l1: st.l1 || '', l2: st.l2 || '', l3: st.l3 || '' };
+  if (!st.l1) return { v: 'cats' };
+  if (st.l2) return { v: 'groups', l1: st.l1, l2: st.l2 };
+  return { v: 'maps', l1: st.l1 };
 }
 
 // 集中管理 URL、浏览器历史及弹层标记，业务模块不直接操作历史栈。

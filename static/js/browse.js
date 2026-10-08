@@ -1,5 +1,6 @@
 import { $, $$, esc, toast, linkifyText } from './ui.js';
 import { getJSON, pointsApiUrl } from './api.js';
+import { parentView } from './navigation.js';
 
 // 浏览状态仅由本模块修改，投稿通过 getContext 获取当前层级快照。
 export function createBrowser({ navigation, points }) {
@@ -8,6 +9,9 @@ export function createBrowser({ navigation, points }) {
   const state = { l1: '', l2: '', l3: '', tag: '', mapsInfo: [], cats: [] };
 
   const layer1 = $('#layer1');
+  const browseStatus = $('#browseStatus');
+  const homeGuide = $('#homeGuide');
+  let viewVersion = 0;
   const layer2 = $('#layer2');
   const layer3 = $('#layer3');
   const pointsArea = $('#pointsArea');
@@ -26,7 +30,7 @@ export function createBrowser({ navigation, points }) {
       const cats = await getJSON('/api/categories');
       state.cats = cats;
       catTabs.innerHTML = cats.map((c, i) => `
-        <button class="cat-card animate-fadeInUp grid-item-${(i % 8) + 1}" data-cat="${esc(c.name)}">
+        <button class="cat-card" data-cat="${esc(c.name)}" aria-label="${esc(c.name)}" aria-pressed="false" title="${esc(c.name)}">
           <span class="cat-card-thumb">
             ${c.icon ? `<img src="${esc(c.icon)}" alt="${esc(c.name)}" loading="lazy">` : '<span class="cat-card-placeholder"></span>'}
           </span>
@@ -43,6 +47,7 @@ export function createBrowser({ navigation, points }) {
 
   function renderView(st) {
     if (!st) st = { v: 'cats' };
+    homeGuide.hidden = ['maps', 'groups', 'points'].includes(st.v);
     if (st.v === 'maps') showMaps(st.l1);
     else if (st.v === 'groups') showGroups(st.l1, st.l2);
     else if (st.v === 'points') showPoints(st);
@@ -51,17 +56,29 @@ export function createBrowser({ navigation, points }) {
 
   /* ---------------- 视图渲染 ---------------- */
 
+  function setActiveCategory(l1) {
+    $$('.cat-card').forEach(btn => {
+      const active = btn.dataset.cat === l1;
+      btn.classList.toggle('active', active);
+      btn.setAttribute('aria-pressed', String(active));
+    });
+  }
+
   function showCats() {
-    state.l1 = '';
-    state.l2 = '';
-    state.l3 = '';
-    state.tag = '';
-    layer1.hidden = false;
+    viewVersion++;
+    Object.assign(state, { l1: '', l2: '', l3: '', tag: '' });
+    setActiveCategory('');
+    homeGuide.hidden = false;
     layer2.hidden = true;
     layer3.hidden = true;
     pointsArea.hidden = true;
     fabSubmit.hidden = true;
-    siteFooter.hidden = false;   // 页脚仅首页（分类页）展示
+    siteFooter.hidden = false;
+    browseStatus.hidden = state.cats.length > 0;
+    if (!state.cats.length) {
+      browseStatus.hidden = false;
+      browseStatus.textContent = '分类暂时无法加载，请刷新页面重试。';
+    }
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -74,23 +91,27 @@ export function createBrowser({ navigation, points }) {
   }
 
   async function showMaps(l1) {
+    const version = ++viewVersion;
+    browseStatus.hidden = true;
+    $('#backToCats').hidden = false;
     state.l1 = l1;
     state.l2 = '';
     state.l3 = '';
     state.tag = '';
-    $$('.cat-card').forEach(b => b.classList.toggle('active', b.dataset.cat === l1));
-    layer1.hidden = true;
+    setActiveCategory(l1);
+    layer1.hidden = false;
     layer2.hidden = false;
     layer3.hidden = true;
     pointsArea.hidden = true;
     fabSubmit.hidden = true;   // 点进具体分类的介绍页不显示投稿卡片（进入具体地图后再出现）
-    siteFooter.hidden = true;   // 非首页隐藏页脚
+    siteFooter.hidden = true;
     renderIntro(state.cats.find(c => c.name === l1) || {});
     groupChips.innerHTML = '<div class="loading-text">加载主题中...</div>';
     $('#catPreview').hidden = true;   // 隐藏旧分类的预览，等待新数据
     window.scrollTo({ top: 0, behavior: 'smooth' });
     try {
       const groups = await getJSON('/api/groups?l1=' + encodeURIComponent(l1));
+      if (version !== viewVersion) return;
       groupChips.innerHTML = groups.map((g, i) => `
         <button class="map-card animate-fadeInUp grid-item-${(i % 8) + 1}" data-name="${esc(g.name)}">
           <span class="map-card-thumb">
@@ -104,6 +125,7 @@ export function createBrowser({ navigation, points }) {
       loadPreview('/api/points?status=approved&l1=' + encodeURIComponent(l1),
         $('#catPreviewGrid'), $('#catPreview'), 'cat', $('#catPreviewMore'));
     } catch (e) {
+      if (version !== viewVersion) return;
       groupChips.innerHTML = '<div class="empty">主题加载失败</div>';
     }
   }
@@ -111,11 +133,13 @@ export function createBrowser({ navigation, points }) {
   /* ---------------- 地图大类 -> 具体地图 / 点位 ---------------- */
 
   async function openGroup(l1, l2) {
+    const version = ++viewVersion;
     state.l1 = l1;
     state.l2 = l2;
     try {
       const maps = await getJSON('/api/maps?l1=' + encodeURIComponent(l1) +
         '&l2=' + encodeURIComponent(l2));
+      if (version !== viewVersion) return;
       state.mapsInfo = maps;
       if (maps.length === 1) {
         // 单地图大类：该地图即具体地图，直接进入点位，跳过地图选择
@@ -130,9 +154,11 @@ export function createBrowser({ navigation, points }) {
   }
 
   function showGroupsView(l1, l2, maps) {
+    browseStatus.hidden = true;
     state.l3 = '';   // 主题（地图大类）层不预选具体地图，投稿时让用户自行勾选
     state.tag = '';
-    layer1.hidden = true;
+    layer1.hidden = false;
+    setActiveCategory(l1);
     layer2.hidden = true;
     layer3.hidden = false;
     pointsArea.hidden = true;
@@ -160,12 +186,14 @@ export function createBrowser({ navigation, points }) {
   /* ---------------- 具体地图 -> 点位 ---------------- */
 
   async function showGroups(l1, l2) {
+    const version = ++viewVersion;
     // 从历史记录返回时重新进入“具体地图”页
     state.l1 = l1;
     state.l2 = l2;
     try {
       const maps = await getJSON('/api/maps?l1=' + encodeURIComponent(l1) +
         '&l2=' + encodeURIComponent(l2));
+      if (version !== viewVersion) return;
       state.mapsInfo = maps;
       showGroupsView(l1, l2, maps);
     } catch (e) {
@@ -174,11 +202,14 @@ export function createBrowser({ navigation, points }) {
   }
 
   async function showPoints(st) {
+    const version = ++viewVersion;
+    browseStatus.hidden = true;
     state.l1 = st.l1 || '';
     state.l2 = st.l2 || '';
     state.l3 = st.l3 || '';
     state.tag = st.tag || '';
-    layer1.hidden = true;
+    layer1.hidden = false;
+    setActiveCategory(state.l1);
     layer2.hidden = true;
     layer3.hidden = true;
     pointsArea.hidden = false;
@@ -201,20 +232,26 @@ export function createBrowser({ navigation, points }) {
     } else {
       banner.hidden = true;
     }
+    $('#tagActions').hidden = !state.tag;
+    $('#globalTag').hidden = !scope;
     renderSkeleton();
     try {
       const points = await getJSON(pointsApiUrl(state));
+      if (version !== viewVersion) return;
       renderPoints(points);
     } catch (e) {
+      if (version !== viewVersion) return;
       pointsGrid.innerHTML = '<div class="empty">加载失败，请重试</div>';
     }
   }
 
-  /* ---------------- 页面内返回按钮（走浏览器历史） ---------------- */
+  /* ---------------- 页面内返回按钮（按层级导航） ---------------- */
 
-  $('#backToCats').addEventListener('click', navigation.back);
-  $('#backToGroups').addEventListener('click', navigation.back);
-  $('#backToMaps').addEventListener('click', navigation.back);
+  $('#backToCats').addEventListener('click', () => navigate({ v: 'cats' }));
+  $('#backToGroups').addEventListener('click', () => navigate(state.l1 ? { v: 'maps', l1: state.l1 } : { v: 'cats' }));
+  $('#backToMaps').addEventListener('click', () => navigate(parentView(state)));
+  $('#clearTag').addEventListener('click', () => navigate({ v: 'points', l1: state.l1, l2: state.l2, l3: state.l3 }));
+  $('#globalTag').addEventListener('click', () => navigate({ v: 'points', tag: state.tag }));
 
   // “更多 →”点击：进入分类级 / 主题级的完整点位列表（不限定具体地图）
   $('#catPreviewMore').addEventListener('click', () => {

@@ -18,13 +18,11 @@ export function createLightbox({ navigation }) {
 
   function openLightbox(points, pointIdx) {
     const flat = [];
-    const firstIdx = [];
-    points.forEach(p => {
-      firstIdx.push(flat.length);
+    points.slice(pointIdx, pointIdx + 1).forEach(p => {
       getPointImages(p).forEach(im => flat.push({ src: im.original, title: displayName(p.title), desc: p.description || '' }));
     });
     lbItems = flat;
-    lbIndex = Math.max(0, Math.min(firstIdx[pointIdx] ?? 0, flat.length - 1));
+    lbIndex = 0;
     renderLb();
     const prevScroll = window.scrollY || document.documentElement.scrollTop || 0;
     lbMask.hidden = false;

@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { createNavigation, stateFromLocation, viewUrl } from '../static/js/navigation.js';
+import { createNavigation, stateFromLocation, viewUrl, parentView } from '../static/js/navigation.js';
 import { getJSON, pointsApiUrl, submitPoint } from '../static/js/api.js';
 import { displayName, getPointImages } from '../static/js/points.js';
 
@@ -17,11 +17,23 @@ test('分享链接保留层级、全部点位与标签视图的区别', () => {
     { v: 'points', l1, l2: '雪夜古堡', l3: '' },
     { v: 'points', l1: '', l2: '', l3: '', tag: '技巧 & 路线' },
     { v: 'points', l1: '', l2: '雪夜古堡', l3: '雪夜古堡II' },
+    { v: 'points', l1, l2: '雪夜古堡', l3: '雪夜古堡II', tag: '技巧' },
+    { v: 'points', l1: '', l2: '雪夜古堡', l3: '雪夜古堡II', tag: '技巧' },
   ];
   for (const view of views) {
     const url = new URL(viewUrl(view, '/'), 'https://example.test');
     assert.deepEqual(stateFromLocation(categories, url.search), view);
   }
+});
+
+test('分享链接没有站内历史时，层级返回仍留在站内', t => {
+  const { navigation, rendered } = navigationEnvironment(t, `?l1=${l1}&l2=主题&l3=地图`);
+  navigation.navigate(parentView({ l1, l2: '主题', l3: '地图' }));
+  assert.deepEqual(rendered.at(-1), { v: 'groups', l1, l2: '主题' });
+  assert.deepEqual(parentView({ l1 }), { v: 'maps', l1 });
+  assert.deepEqual(parentView({ l1, l2: '主题' }), { v: 'groups', l1, l2: '主题' });
+  assert.deepEqual(parentView({ tag: '技巧' }), { v: 'points', l1: '', l2: '', l3: '' });
+  assert.deepEqual(parentView({}), { v: 'cats' });
 });
 
 test('旧链接推断层级，失效分类回首页，标签仍可独立访问', () => {
