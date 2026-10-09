@@ -82,6 +82,11 @@ export function createPoints({ navigate, openLightbox, getContext }) {
   const PREVIEW_MAX = 3;
   const previewTokens = {};
 
+  // 离开当前范围时立即作废预览，不等待下一次预览请求开始。
+  function invalidatePreviews() {
+    for (const key of Object.keys(previewTokens)) previewTokens[key]++;
+  }
+
   async function loadPreview(url, grid, block, key, moreBtn) {
     if (!grid || !block) return;
     key = key || 'default';
@@ -109,5 +114,5 @@ export function createPoints({ navigate, openLightbox, getContext }) {
   }
 
 
-  return { renderSkeleton, renderPoints, loadPreview };
+  return { renderSkeleton, renderPoints, loadPreview, invalidatePreviews };
 }

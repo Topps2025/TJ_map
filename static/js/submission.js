@@ -50,7 +50,10 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
       if (version !== draftVersion || category !== fCat.value) return;
       fGroup.innerHTML = '<option value="">请选择</option>' +
         groups.map(g => `<option value="${esc(g.name)}">${esc(g.name)}</option>`).join('');
-    } catch (e) { toast('主题加载失败'); }
+    } catch (e) {
+      if (version !== draftVersion || category !== fCat.value) return;
+      toast('主题加载失败');
+    }
   }
 
   // 按当前分类+主题填充具体地图勾选列表
@@ -65,7 +68,10 @@ export function createSubmission({ navigation, getContext, onSubmitted, isLightb
         '&l2=' + encodeURIComponent(fGroup.value));
       if (version !== draftVersion || category !== fCat.value || group !== fGroup.value) return;
       renderMapChecks(maps, fMapList, new Set());
-    } catch (e) { toast('地图加载失败'); }
+    } catch (e) {
+      if (version !== draftVersion || category !== fCat.value || group !== fGroup.value) return;
+      toast('地图加载失败');
+    }
   }
 
   // 打开投稿弹窗并预填字段：prefill = {l1, l2, l3}
