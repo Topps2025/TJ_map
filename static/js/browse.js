@@ -5,7 +5,7 @@ import { parentView } from './navigation.js';
 // 浏览状态仅由本模块修改，投稿通过 getContext 获取当前层级快照。
 export function createBrowser({ navigation, points }) {
   const { navigate } = navigation;
-  const { renderSkeleton, renderPoints, loadPreview } = points;
+  const { renderSkeleton, renderPoints, loadPreview, invalidatePreviews } = points;
   const state = { l1: '', l2: '', l3: '', tag: '', mapsInfo: [], cats: [] };
 
   const layer1 = $('#layer1');
@@ -47,6 +47,7 @@ export function createBrowser({ navigation, points }) {
   }
 
   function renderView(st) {
+    invalidatePreviews();
     if (!st) st = { v: 'cats' };
     currentView = st.v;
     homeGuide.hidden = ['maps', 'groups', 'points'].includes(st.v);
@@ -135,6 +136,7 @@ export function createBrowser({ navigation, points }) {
   /* ---------------- 地图大类 -> 具体地图 / 点位 ---------------- */
 
   async function openGroup(l1, l2) {
+    invalidatePreviews();
     const version = ++viewVersion;
     state.l1 = l1;
     state.l2 = l2;
@@ -151,6 +153,7 @@ export function createBrowser({ navigation, points }) {
       navigation.pushView({ v: 'groups', l1, l2 });
       showGroupsView(l1, l2, maps);
     } catch (e) {
+      if (version !== viewVersion) return;
       toast('地图加载失败');
     }
   }

@@ -4,6 +4,7 @@ import { createLightbox } from '../static/js/lightbox.js';
 import { createSubmission } from '../static/js/submission.js';
 import { createBrowser } from '../static/js/browse.js';
 import { createSidebar } from '../static/js/sidebar.js';
+import { createPoints } from '../static/js/points.js';
 
 // 用最小 DOM 替身驱动真实事件处理器，验证跨模块交互状态。
 function environment(t) {
@@ -140,7 +141,9 @@ function deferredRequests(t) {
 function browserEnvironment(t) {
   const env = environment(t);
   const rendered = [], previews = [];
+  env.navigation.navigate = view => browser.renderView(view);
   const browser = createBrowser({ navigation: env.navigation, points: {
+    invalidatePreviews() {},
     renderSkeleton() {}, renderPoints: data => rendered.push(data),
     loadPreview: url => previews.push(url),
   } });
@@ -172,6 +175,24 @@ test('主题加载失败时显示当前主题的错误区域，允许返回分�
   await settle();
   assert.equal(el('#layer3').hidden, false);
   assert.match(el('#mapChips').innerHTML, /地图加载失败/);
+  el('#backToGroups').click();
+  assert.equal(el('#layer3').hidden, true);
+  assert.equal(el('#layer2').hidden, false);
+  requests[1].respond([]);
+  await settle();
+});
+
+test('离开当前范围后，旧预览响应不能重新显示区块', async t => {
+  const { el } = environment(t);
+  const requests = deferredRequests(t);
+  const points = createPoints({ navigate() {}, openLightbox() {}, getContext: () => ({}) });
+  const block = el('#previewBlock'), grid = el('#previewGrid');
+  const pending = points.loadPreview('/api/points', grid, block, 'cat');
+  points.invalidatePreviews();
+  requests[0].respond([]);
+  await pending;
+  assert.equal(block.hidden, true);
+  assert.equal(grid.innerHTML, '');
 });
 
 test('主题旧请求失败不覆盖后来成功加载的主题', async t => {
